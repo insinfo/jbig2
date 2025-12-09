@@ -1,0 +1,20 @@
+library io;
+
+export 'closeable.dart';
+export 'exceptions.dart';
+export 'io_utils.dart';
+export 'memory_usage_setting.dart';
+export 'non_seekable_random_access_read_input_stream.dart';
+export 'random_access_input_stream.dart';
+export 'random_access_output_stream.dart';
+export 'random_access_read_buffer.dart';
+export 'random_access_read_buffered_file.dart';
+export 'random_access_read_memory_mapped_file.dart';
+export 'random_access_read_view.dart';
+export 'random_access_read.dart';
+export 'random_access_stream_cache_impl.dart';
+export 'random_access_stream_cache.dart';
+export 'random_access_write.dart';
+export 'random_access.dart';
+export 'scratch_file.dart';
+export 'sequence_random_access_read.dart';
