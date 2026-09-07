@@ -148,13 +148,26 @@ Uint8List encodeJbig2Pages(
   if (images.isEmpty) {
     throw ArgumentError('At least one image is required.');
   }
-  final dictionary = <Bitmap>[];
-  final byShape = <String, List<int>>{};
-  final pages = <ExtractedSymbols>[];
   for (final image in images) {
     if (image.width <= 0 || image.height <= 0) {
       throw ArgumentError('Every image must have a positive extent.');
     }
+  }
+  if (options.mode == Jbig2EncodeMode.genericRegion) {
+    return _encodeGenericPages(images, options);
+  }
+  final symbolic = _encodeSymbolPages(images, options);
+  if (options.mode == Jbig2EncodeMode.symbolDictionary) return symbolic;
+  final generic = _encodeGenericPages(images, options);
+  return symbolic.length < generic.length ? symbolic : generic;
+}
+
+Uint8List _encodeSymbolPages(
+    List<Jbig2Image> images, Jbig2EncodeOptions options) {
+  final dictionary = <Bitmap>[];
+  final byShape = <String, List<int>>{};
+  final pages = <ExtractedSymbols>[];
+  for (final image in images) {
     final extracted = SymbolExtractor(image.toBitmap()).extract();
     final remap = <int, int>{};
     for (var local = 0; local < extracted.dictionary.length; local++) {
@@ -244,6 +257,45 @@ Uint8List encodeJbig2Pages(
               codeword: SymbolDictionaryEncoder.encodeTextRegion(
                   ordered, instances)));
     }
+    writer.writeSegment(
+        number: segment++,
+        type: Jbig2SegmentType.endOfPage,
+        page: page,
+        data: Uint8List(0));
+  }
+  writer.writeSegment(
+      number: segment,
+      type: Jbig2SegmentType.endOfFile,
+      page: 0,
+      data: Uint8List(0));
+  return writer.takeBytes();
+}
+
+Uint8List _encodeGenericPages(
+    List<Jbig2Image> images, Jbig2EncodeOptions options) {
+  final writer = Jbig2Writer()..writeFileHeader(pageCount: images.length);
+  var segment = 0;
+  for (var index = 0; index < images.length; index++) {
+    final image = images[index];
+    final page = index + 1;
+    writer.writeSegment(
+        number: segment++,
+        type: Jbig2SegmentType.pageInformation,
+        page: page,
+        data: Jbig2Writer.pageInformation(
+            width: image.width,
+            height: image.height,
+            xResolution: options.xResolution,
+            yResolution: options.yResolution));
+    writer.writeSegment(
+        number: segment++,
+        type: Jbig2SegmentType.immediateLosslessGenericRegion,
+        page: page,
+        data: Jbig2Writer.genericRegion(
+            width: image.width,
+            height: image.height,
+            codeword: _codeword(image, options),
+            typicalPrediction: options.typicalPrediction));
     writer.writeSegment(
         number: segment++,
         type: Jbig2SegmentType.endOfPage,

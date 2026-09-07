@@ -91,6 +91,29 @@ void main() {
       expect(() => encodeJbig2Pages(const []), throwsArgumentError);
     });
 
+    test('multipage mode selects generic regions or the smaller file', () {
+      final pages = <Jbig2Image>[
+        _image(List.generate(17, (y) => y.isEven ? '#.' * 17 : '.#' * 17)),
+        _image(List.generate(17, (y) => y % 3 == 0 ? '#' * 34 : '.' * 34)),
+      ];
+      const genericOptions =
+          Jbig2EncodeOptions(mode: Jbig2EncodeMode.genericRegion);
+      const symbolOptions =
+          Jbig2EncodeOptions(mode: Jbig2EncodeMode.symbolDictionary);
+      const autoOptions = Jbig2EncodeOptions(mode: Jbig2EncodeMode.auto);
+
+      final generic = encodeJbig2Pages(pages, options: genericOptions);
+      final symbolic = encodeJbig2Pages(pages, options: symbolOptions);
+      final automatic = encodeJbig2Pages(pages, options: autoOptions);
+
+      expect(automatic.length, min(generic.length, symbolic.length));
+      for (var index = 0; index < pages.length; index++) {
+        _expectSamePixels(decodeJbig2(generic, page: index + 1), pages[index]);
+        _expectSamePixels(
+            decodeJbig2(automatic, page: index + 1), pages[index]);
+      }
+    });
+
     test('deduplicates and places repeated glyphs losslessly', () {
       final rows = <String>[];
       for (var line = 0; line < 12; line++) {

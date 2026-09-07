@@ -110,6 +110,10 @@ final book = encodeJbig2Pages([cover, page2, page3]);
 final second = decodeJbig2(book, page: 2);
 ```
 
+`encodeJbig2Pages` honours the same `mode` option as the single-page encoder.
+In `auto` mode it compares complete generic-region and shared-dictionary files;
+`genericRegion` can be forced for scanned or photographic bilevel pages.
+
 Generic regions use template 0, nominal adaptive pixels and typical
 prediction. Force `Jbig2EncodeMode.genericRegion` when symbol extraction is not
 appropriate for the input.
