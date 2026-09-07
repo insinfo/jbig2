@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Cancela execuções antigas do mesmo branch: só o último commit interessa.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: ${{ matrix.os }} / Dart ${{ matrix.sdk }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      # Sem fail-fast: quando quebra em um alvo, queremos saber se quebrou nos
+      # outros também, senão o diagnóstico vira adivinhação.
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        # `3.6` é o mínimo declarado no pubspec. Testá-lo é o que impede usar
+        # uma API mais nova do que a restrição promete suportar.
+        sdk: ['3.6', stable]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dart-lang/setup-dart@v1
+        with:
+          sdk: ${{ matrix.sdk }}
+
+      - name: Resolver dependências
+        run: dart pub get
+
+      - name: Verificar formatação
+        run: dart format --output=none --set-exit-if-changed lib test example
+
+      - name: Analisar
+        run: dart analyze --fatal-infos
+
+      - name: Testar
+        run: dart test --reporter=expanded
+
+  package:
+    name: Pacote publicável
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dart-lang/setup-dart@v1
+        with:
+          sdk: stable
+
+      - run: dart pub get
+
+      # Falha se o pacote deixar de ser publicável — dependência sem
+      # restrição, arquivo faltando, licença ausente. Melhor descobrir aqui do
+      # que na hora de publicar.
+      - name: Validar publicação
+        run: dart pub publish --dry-run
