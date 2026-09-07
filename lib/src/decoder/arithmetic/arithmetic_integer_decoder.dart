@@ -75,10 +75,17 @@ class ArithmeticIntegerDecoder {
       cx.setIndex(prev);
       d = decoder.decode(cx);
       setPrev(d);
-      v = (v << 1) | d;
+      // `toSigned(32)` reproduz o transbordo do `int` de 32 bits da
+      // implementação de referência. O `int` do Dart tem 64 bits, então sem
+      // isto um valor de 32 bits com o bit alto ligado permanece positivo em
+      // vez de virar negativo — e o teste `v > 0` logo abaixo deixa de
+      // reconhecer o OOB, devolvendo uma largura enorme no lugar dele. Quem
+      // consome (o dicionário de símbolos) então decodifica símbolos além dos
+      // declarados e escreve fora do array.
+      v = ((v << 1) | d).toSigned(32);
     }
 
-    v += offset;
+    v = (v + offset).toSigned(32);
 
     if (s == 0) {
       return v;

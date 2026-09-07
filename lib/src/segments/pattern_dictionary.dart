@@ -92,6 +92,10 @@ class PatternDictionary implements Dictionary {
         _setGbAtPixels();
       }
 
+      // Num dicionário codificado em MMR não há pixels adaptativos para ler,
+      // então `_setGbAtPixels` acima não roda e os dois ficam nulos. A
+      // decodificação MMR nunca os consulta; desreferenciá-los aqui derrubava
+      // qualquer arquivo com região halftone codificada em MMR.
       final GenericRegion genericRegion = GenericRegion(_subInputStream!);
       genericRegion.setParametersForPattern(
           _isMMREncoded,
@@ -102,8 +106,8 @@ class PatternDictionary implements Dictionary {
           _hdTemplate,
           false,
           false,
-          _gbAtX!,
-          _gbAtY!);
+          _gbAtX,
+          _gbAtY);
 
       final Bitmap collectiveBitmap = genericRegion.getRegionBitmap();
       _extractPatterns(collectiveBitmap);

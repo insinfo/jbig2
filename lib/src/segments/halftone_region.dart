@@ -207,8 +207,10 @@ class HalftoneRegion implements Region {
         _hTemplate,
         false,
         _hSkipEnabled,
-        gbAtX!,
-        gbAtY!);
+        // Nulos quando a região é MMR, exatamente como na implementação de
+        // referência: a decodificação MMR não consulta pixels adaptativos.
+        gbAtX,
+        gbAtY);
 
     int j = bitsPerValue - 1;
     grayScalePlanes[j] = genericRegion.getRegionBitmap();

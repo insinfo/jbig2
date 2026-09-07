@@ -761,8 +761,8 @@ class GenericRegion implements Region {
       int gbTemplate,
       bool isTPGDon,
       bool useSkip,
-      List<int> gbAtX,
-      List<int> gbAtY) {
+      List<int>? gbAtX,
+      List<int>? gbAtY) {
     _dataOffset = dataOffset;
     _dataLength = dataLength;
 
