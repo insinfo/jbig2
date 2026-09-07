@@ -29,6 +29,10 @@ class GenericRegion implements Region {
 
   Bitmap? _regionBitmap;
 
+  /// Decodificador MMR reaproveitado entre planos de bits; veja
+  /// [getRegionBitmap]. Zerado por `setParameters`, que troca a região.
+  MMRDecompressor? _mmrDecompressor;
+
   ArithmeticDecoder? _arithDecoder;
   CX? _cx;
 
@@ -86,14 +90,9 @@ class GenericRegion implements Region {
     _gbAtY = List<int>.filled(amountOfGbAt, 0);
 
     for (int i = 0; i < amountOfGbAt; i++) {
-      _gbAtX![i] = _toSigned8(_subInputStream!.read());
-      _gbAtY![i] = _toSigned8(_subInputStream!.read());
+      _gbAtX![i] = _subInputStream!.read().toSigned(8);
+      _gbAtY![i] = _subInputStream!.read().toSigned(8);
     }
-  }
-
-  int _toSigned8(int val) {
-    if (val >= 0x80) return val - 0x100;
-    return val;
   }
 
   void _computeSegmentDataStructure() {
@@ -105,12 +104,18 @@ class GenericRegion implements Region {
   Bitmap getRegionBitmap() {
     if (_regionBitmap == null) {
       if (_isMMREncoded) {
-        _subInputStream!.seek(_dataOffset);
-        final view = _subInputStream!.wrappedStream
-            .createView(_subInputStream!.offset + _dataOffset, _dataLength);
-        final MMRDecompressor mmrDecompressor = MMRDecompressor(
-            _regionInfo!.bitmapWidth, _regionInfo!.bitmapHeight, view);
-        _regionBitmap = mmrDecompressor.uncompress();
+        // O decodificador MMR é guardado entre chamadas de propósito. Uma
+        // região halftone decodifica um plano de bits por chamada, cada um
+        // continuando de onde o anterior parou dentro do mesmo fluxo MMR.
+        // Criar um decodificador novo a cada chamada fazia todos os planos
+        // decodificarem o primeiro, e a escala de cinza saía errada.
+        if (_mmrDecompressor == null) {
+          final view = _subInputStream!.wrappedStream
+              .createView(_subInputStream!.offset + _dataOffset, _dataLength);
+          _mmrDecompressor = MMRDecompressor(
+              _regionInfo!.bitmapWidth, _regionInfo!.bitmapHeight, view);
+        }
+        _regionBitmap = _mmrDecompressor!.uncompress();
       } else {
         _updateOverrideFlags();
 
@@ -748,6 +753,28 @@ class GenericRegion implements Region {
     _regionInfo!.bitmapHeight = hcHeight;
     if (cx != null) _cx = cx;
     if (arithmeticDecoder != null) _arithDecoder = arithmeticDecoder;
+    _mmrDecompressor = null;
+    _regionBitmap = null;
+  }
+
+  /// Prepara a região para o bitmap coletivo de uma classe de altura, no
+  /// dicionário de símbolos codificado em Huffman.
+  ///
+  /// Diferente de [setParametersForPattern], esta zera o decodificador MMR.
+  /// Cada classe de altura é um fluxo MMR próprio, começando numa posição
+  /// nova; reaproveitar o decodificador da classe anterior produziria o
+  /// bitmap errado. Já a região halftone depende do reaproveitamento, porque
+  /// seus planos de bits são consecutivos dentro de um mesmo fluxo — por isso
+  /// as duas são métodos separados, como na implementação de referência.
+  void setParametersForCollectiveBitmap(
+      bool isMMREncoded, int dataOffset, int dataLength, int gbh, int gbw) {
+    _isMMREncoded = isMMREncoded;
+    _dataOffset = dataOffset;
+    _dataLength = dataLength;
+    _regionInfo!.bitmapHeight = gbh;
+    _regionInfo!.bitmapWidth = gbw;
+
+    _mmrDecompressor = null;
     _regionBitmap = null;
   }
 

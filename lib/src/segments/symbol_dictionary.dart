@@ -145,8 +145,13 @@ class SymbolDictionary implements Dictionary {
     _sdATX = List.filled(amountOfPixels, 0);
     _sdATY = List.filled(amountOfPixels, 0);
     for (int i = 0; i < amountOfPixels; i++) {
-      _sdATX![i] = _subInputStream!.read();
-      _sdATY![i] = _subInputStream!.read();
+      // As coordenadas de um pixel adaptativo são inteiros de 8 bits COM
+      // sinal: um deslocamento para a esquerda ou para cima é negativo.
+      // `read()` devolve o byte sem sinal, então -1 chegava como 255 e o
+      // contexto aritmético era montado a partir do pixel errado, o que
+      // dessincronizava o decodificador logo no primeiro símbolo.
+      _sdATX![i] = _subInputStream!.read().toSigned(8);
+      _sdATY![i] = _subInputStream!.read().toSigned(8);
     }
   }
 
@@ -154,8 +159,8 @@ class SymbolDictionary implements Dictionary {
     _sdrATX = List.filled(amountOfAtPixels, 0);
     _sdrATY = List.filled(amountOfAtPixels, 0);
     for (int i = 0; i < amountOfAtPixels; i++) {
-      _sdrATX![i] = _subInputStream!.read();
-      _sdrATY![i] = _subInputStream!.read();
+      _sdrATX![i] = _subInputStream!.read().toSigned(8);
+      _sdrATY![i] = _subInputStream!.read().toSigned(8);
     }
   }
 
@@ -469,8 +474,8 @@ class SymbolDictionary implements Dictionary {
         rdx,
         rdy,
         false,
-        _sdrATX!,
-        _sdrATY!);
+        _sdrATX,
+        _sdrATY);
     _addSymbol(_genericRefinementRegion!);
   }
 
@@ -543,15 +548,12 @@ class SymbolDictionary implements Dictionary {
       return heightClassCollectiveBitmap;
     } else {
       _genericRegion ??= GenericRegion(_subInputStream!);
-      _genericRegion!.setParametersForPattern(
+      _genericRegion!.setParametersForCollectiveBitmap(
           true,
           _subInputStream!.getStreamPosition(),
           bmSize,
           heightClassHeight,
-          totalWidth,
-          0,
-          false,
-          false, [], []);
+          totalWidth);
       return _genericRegion!.getRegionBitmap();
     }
   }

@@ -100,14 +100,16 @@ class GenericRefinementRegion implements Region {
     _grAtX = List.filled(2, 0);
     _grAtY = List.filled(2, 0);
 
+    // Inteiros de 8 bits com sinal, como em toda coordenada de pixel
+    // adaptativo; `read()` devolve o byte sem sinal.
     /* Byte 0 */
-    _grAtX![0] = _subInputStream!.read();
+    _grAtX![0] = _subInputStream!.read().toSigned(8);
     /* Byte 1 */
-    _grAtY![0] = _subInputStream!.read();
+    _grAtY![0] = _subInputStream!.read().toSigned(8);
     /* Byte 2 */
-    _grAtX![1] = _subInputStream!.read();
+    _grAtX![1] = _subInputStream!.read().toSigned(8);
     /* Byte 3 */
-    _grAtY![1] = _subInputStream!.read();
+    _grAtY![1] = _subInputStream!.read().toSigned(8);
   }
 
   @override
@@ -806,8 +808,10 @@ class GenericRefinementRegion implements Region {
       int grReferenceDX,
       int grReferenceDY,
       bool isTPGRon,
-      List<int> grAtX,
-      List<int> grAtY) {
+      // Nulos quando o template de refinamento não é 0: nesse caso a norma não
+      // define pixels adaptativos e o decodificador não os consulta.
+      List<int>? grAtX,
+      List<int>? grAtY) {
     if (cx != null) {
       _cx = cx;
     }

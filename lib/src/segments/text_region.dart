@@ -515,8 +515,8 @@ class TextRegion implements Region {
           genericRegionReferenceDX,
           genericRegionReferenceDY,
           false,
-          _sbrATX!,
-          _sbrATY!);
+          _sbrATX,
+          _sbrATY);
 
       ib = _genericRefinementRegion!.getRegionBitmap();
 
