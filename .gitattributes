@@ -1,0 +1,2 @@
+# Hooks sao scripts sh: precisam de LF mesmo em checkout Windows.
+.githooks/* text eol=lf
