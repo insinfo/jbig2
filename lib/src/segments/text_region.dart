@@ -160,10 +160,12 @@ class TextRegion implements Region {
     if (_useRefinement && _sbrTemplate == 0) {
       _sbrATX = List.filled(2, 0);
       _sbrATY = List.filled(2, 0);
-      _sbrATX![0] = _subInputStream!.read();
-      _sbrATY![0] = _subInputStream!.read();
-      _sbrATX![1] = _subInputStream!.read();
-      _sbrATY![1] = _subInputStream!.read();
+      // Inteiros de 8 bits com sinal: um deslocamento para a esquerda ou para
+      // cima é negativo, e `read()` devolve o byte sem sinal.
+      _sbrATX![0] = _subInputStream!.read().toSigned(8);
+      _sbrATY![0] = _subInputStream!.read().toSigned(8);
+      _sbrATX![1] = _subInputStream!.read().toSigned(8);
+      _sbrATY![1] = _subInputStream!.read().toSigned(8);
     }
   }
 
