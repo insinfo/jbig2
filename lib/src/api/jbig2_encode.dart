@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import '../bitmap.dart';
 import '../encoder/generic_region_encoder.dart';
 import '../encoder/jbig2_writer.dart';
 import '../encoder/symbol_dictionary_encoder.dart';
@@ -131,6 +132,138 @@ Uint8List encodeJbig2File(
     }
   }
   return _encodeGeneric(image, options, true);
+}
+
+/// Encodes several pages into one standalone JBIG2 file with a shared global
+/// symbol dictionary.
+///
+/// Identical connected components are stored once even when they occur on
+/// different pages. Each page gets its own page-information and lossless text
+/// region and refers to the page-association-zero dictionary.
+Uint8List encodeJbig2Pages(
+  List<Jbig2Image> images, {
+  Jbig2EncodeOptions options =
+      const Jbig2EncodeOptions(mode: Jbig2EncodeMode.symbolDictionary),
+}) {
+  if (images.isEmpty) {
+    throw ArgumentError('At least one image is required.');
+  }
+  final dictionary = <Bitmap>[];
+  final byShape = <String, List<int>>{};
+  final pages = <ExtractedSymbols>[];
+  for (final image in images) {
+    if (image.width <= 0 || image.height <= 0) {
+      throw ArgumentError('Every image must have a positive extent.');
+    }
+    final extracted = SymbolExtractor(image.toBitmap()).extract();
+    final remap = <int, int>{};
+    for (var local = 0; local < extracted.dictionary.length; local++) {
+      final symbol = extracted.dictionary[local];
+      final key = '${symbol.width}x${symbol.height}:${symbol.bitmap.join(',')}';
+      var global = -1;
+      for (final candidate in byShape[key] ?? const <int>[]) {
+        if (_sameSymbol(dictionary[candidate], symbol)) {
+          global = candidate;
+          break;
+        }
+      }
+      if (global < 0) {
+        global = dictionary.length;
+        dictionary.add(symbol);
+        byShape.putIfAbsent(key, () => <int>[]).add(global);
+      }
+      remap[local] = global;
+    }
+    pages.add(ExtractedSymbols(dictionary, <ExtractedSymbolInstance>[
+      for (final instance in extracted.instances)
+        ExtractedSymbolInstance(
+            remap[instance.symbol]!, instance.x, instance.y),
+    ]));
+  }
+
+  // Dictionary coding requires height/width order. Reorder the shared set and
+  // update every page's symbol IDs after cross-page deduplication.
+  final order = List<int>.generate(dictionary.length, (index) => index)
+    ..sort((a, b) {
+      final height = dictionary[a].height.compareTo(dictionary[b].height);
+      return height != 0
+          ? height
+          : dictionary[a].width.compareTo(dictionary[b].width);
+    });
+  final ordered = <Bitmap>[for (final index in order) dictionary[index]];
+  final reorder = <int, int>{};
+  for (var index = 0; index < order.length; index++) {
+    reorder[order[index]] = index;
+  }
+  final remappedPages = <List<ExtractedSymbolInstance>>[
+    for (final page in pages)
+      <ExtractedSymbolInstance>[
+        for (final instance in page.instances)
+          ExtractedSymbolInstance(
+              reorder[instance.symbol]!, instance.x, instance.y),
+      ]
+  ];
+
+  final writer = Jbig2Writer()..writeFileHeader(pageCount: images.length);
+  var segment = 0;
+  int? dictionarySegment;
+  if (ordered.isNotEmpty) {
+    dictionarySegment = segment++;
+    writer.writeSegment(
+        number: dictionarySegment,
+        type: Jbig2SegmentType.symbolDictionary,
+        page: 0,
+        data: Jbig2Writer.symbolDictionary(
+            exportedSymbols: ordered.length,
+            newSymbols: ordered.length,
+            codeword: SymbolDictionaryEncoder.encodeDictionary(ordered)));
+  }
+  for (var index = 0; index < images.length; index++) {
+    final image = images[index];
+    final page = index + 1;
+    writer.writeSegment(
+        number: segment++,
+        type: Jbig2SegmentType.pageInformation,
+        page: page,
+        data: Jbig2Writer.pageInformation(
+            width: image.width,
+            height: image.height,
+            xResolution: options.xResolution,
+            yResolution: options.yResolution));
+    final instances = remappedPages[index];
+    if (instances.isNotEmpty) {
+      writer.writeSegment(
+          number: segment++,
+          type: Jbig2SegmentType.immediateLosslessTextRegion,
+          page: page,
+          referredTo: <int>[dictionarySegment!],
+          data: Jbig2Writer.textRegion(
+              width: image.width,
+              height: image.height,
+              instances: instances.length,
+              codeword: SymbolDictionaryEncoder.encodeTextRegion(
+                  ordered, instances)));
+    }
+    writer.writeSegment(
+        number: segment++,
+        type: Jbig2SegmentType.endOfPage,
+        page: page,
+        data: Uint8List(0));
+  }
+  writer.writeSegment(
+      number: segment,
+      type: Jbig2SegmentType.endOfFile,
+      page: 0,
+      data: Uint8List(0));
+  return writer.takeBytes();
+}
+
+bool _sameSymbol(Bitmap a, Bitmap b) {
+  if (a.width != b.width || a.height != b.height) return false;
+  for (var index = 0; index < a.bitmap.length; index++) {
+    if (a.bitmap[index] != b.bitmap[index]) return false;
+  }
+  return true;
 }
 
 Uint8List? _encodeSymbols(

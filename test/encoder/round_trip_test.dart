@@ -52,6 +52,45 @@ void _roundTrip(Jbig2Image source, {bool typicalPrediction = true}) {
 
 void main() {
   group('symbol dictionary round trip', () {
+    test('shares one global dictionary across multiple pages', () {
+      final first = _image([
+        '..##......##....',
+        '.####....####...',
+        '##..##..##..##..',
+        '.####....####...',
+        '..##......##....',
+      ]);
+      final second = _image([
+        '..##............',
+        '.####...........',
+        '##..##..........',
+        '.####...........',
+        '..##............',
+      ]);
+      final blank = _image(List.filled(5, '.' * 16));
+
+      final file = encodeJbig2Pages([first, second, blank]);
+
+      expect(probeJbig2(file).pageCount, 3);
+      _expectSamePixels(decodeJbig2(file, page: 1), first);
+      _expectSamePixels(decodeJbig2(file, page: 2), second);
+      _expectSamePixels(decodeJbig2(file, page: 3), blank);
+      expect(
+          file.length,
+          lessThan(encodeJbig2File(first,
+                      options: const Jbig2EncodeOptions(
+                          mode: Jbig2EncodeMode.symbolDictionary))
+                  .length +
+              encodeJbig2File(second,
+                      options: const Jbig2EncodeOptions(
+                          mode: Jbig2EncodeMode.symbolDictionary))
+                  .length));
+    });
+
+    test('multipage encoding rejects an empty page list', () {
+      expect(() => encodeJbig2Pages(const []), throwsArgumentError);
+    });
+
     test('deduplicates and places repeated glyphs losslessly', () {
       final rows = <String>[];
       for (var line = 0; line < 12; line++) {

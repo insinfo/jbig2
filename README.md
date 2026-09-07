@@ -102,6 +102,14 @@ final symbols = encodeJbig2Embedded(image,
 );
 ```
 
+Several standalone pages can share one global dictionary; identical glyphs are
+stored once across the whole file:
+
+```dart
+final book = encodeJbig2Pages([cover, page2, page3]);
+final second = decodeJbig2(book, page: 2);
+```
+
 Generic regions use template 0, nominal adaptive pixels and typical
 prediction. Force `Jbig2EncodeMode.genericRegion` when symbol extraction is not
 appropriate for the input.
@@ -112,7 +120,8 @@ measuring: scanned pages are mostly white, and the margins alone pay for it.
 
 Refinement aggregation is decoded but not yet emitted. Exact bitmap symbols do
 not need refinement and remain lossless; refinement can improve compression of
-similar, non-identical scanned glyphs.
+similar, non-identical scanned glyphs. Multi-page files already deduplicate
+exact symbols through a page-association-zero global dictionary.
 
 ## Development
 
