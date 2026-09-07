@@ -273,7 +273,7 @@ class SymbolDictionary implements Dictionary {
 
         while (true) {
           final int differenceWidth = _decodeDifferenceWidth();
-          if (differenceWidth == 0x7fffffffffffffff) break; // OOB check
+          if (differenceWidth == 0x1fffffffffffff) break; // OOB check
 
           symbolWidth += differenceWidth;
           totalWidth += symbolWidth;

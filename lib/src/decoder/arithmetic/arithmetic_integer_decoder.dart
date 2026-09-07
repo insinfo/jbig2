@@ -93,7 +93,7 @@ class ArithmeticIntegerDecoder {
       return -v;
     }
 
-    return 9223372036854775807;
+    return 0x1fffffffffffff;
   }
 
   void setPrev(int bit) {

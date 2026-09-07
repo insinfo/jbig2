@@ -354,7 +354,7 @@ class TextRegion implements Region {
           first = false;
         } else {
           final int idS = _decodeIdS();
-          if (idS == 0x7fffffffffffffff) {
+          if (idS == 0x1fffffffffffff) {
             // Long.MAX_VALUE check? Dart int is 64-bit.
             break; // How to represent OOB?
           }

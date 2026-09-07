@@ -7,6 +7,6 @@ class OutOfBandNode extends Node {
 
   @override
   int decode(SubInputStream iis) {
-    return 9223372036854775807; // Long.MAX_VALUE in Java (64-bit signed)
+    return 0x1fffffffffffff; // Sentinela OOB exato também em JavaScript.
   }
 }

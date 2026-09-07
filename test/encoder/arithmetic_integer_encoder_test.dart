@@ -40,7 +40,7 @@ void main() {
     final readContext = CX(512, 1);
     for (final value in values) {
       final decoded = decoder.decode(readContext);
-      expect(decoded, value ?? 0x7fffffffffffffff);
+      expect(decoded, value ?? 0x1fffffffffffff);
     }
   });
 
