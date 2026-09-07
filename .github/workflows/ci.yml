@@ -42,7 +42,7 @@ jobs:
         run: dart analyze --fatal-infos
 
       - name: Testar
-        run: dart test --reporter=expanded
+        run: dart test --reporter=github
 
   package:
     name: Pacote publicável
