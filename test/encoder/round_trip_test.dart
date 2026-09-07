@@ -52,6 +52,68 @@ void _roundTrip(Jbig2Image source, {bool typicalPrediction = true}) {
 
 void main() {
   group('symbol dictionary round trip', () {
+    test('shares a PDF JBIG2Globals stream across embedded images', () {
+      final glyph = [
+        '..##......##....',
+        '.####....####...',
+        '##..##..##..##..',
+        '.####....####...',
+        '..##......##....',
+      ];
+      final pages = [
+        _image(glyph),
+        _image([
+          ...glyph,
+          '.' * 16,
+          ...glyph,
+        ]),
+        _image(List.filled(5, '.' * 16)),
+      ];
+      final encoded = encodeJbig2EmbeddedPages(pages,
+          options:
+              const Jbig2EncodeOptions(mode: Jbig2EncodeMode.symbolDictionary));
+
+      expect(encoded.usesGlobalDictionary, isTrue);
+      expect(encoded.pages, hasLength(3));
+      for (var index = 0; index < pages.length; index++) {
+        _expectSamePixels(
+            decodeJbig2Embedded(encoded.pages[index], globals: encoded.globals),
+            pages[index]);
+      }
+      final separate = pages.fold<int>(
+          0,
+          (total, page) =>
+              total +
+              encodeJbig2Embedded(page,
+                      options: const Jbig2EncodeOptions(
+                          mode: Jbig2EncodeMode.symbolDictionary))
+                  .length);
+      expect(encoded.totalLength, lessThan(separate));
+    });
+
+    test('embedded pages auto counts globals when choosing representation', () {
+      final pages = [
+        _image(List.generate(17, (y) => y.isEven ? '#.' * 17 : '.#' * 17)),
+        _image(List.generate(17, (y) => y % 3 == 0 ? '#' * 34 : '.' * 34)),
+      ];
+      final automatic = encodeJbig2EmbeddedPages(pages);
+      final generic = encodeJbig2EmbeddedPages(pages,
+          options:
+              const Jbig2EncodeOptions(mode: Jbig2EncodeMode.genericRegion));
+      final symbolic = encodeJbig2EmbeddedPages(pages,
+          options:
+              const Jbig2EncodeOptions(mode: Jbig2EncodeMode.symbolDictionary));
+
+      expect(automatic.totalLength,
+          min(generic.totalLength, symbolic.totalLength));
+      for (var index = 0; index < pages.length; index++) {
+        _expectSamePixels(
+            decodeJbig2Embedded(automatic.pages[index],
+                globals: automatic.globals),
+            pages[index]);
+      }
+    });
+
     test('shares one global dictionary across multiple pages', () {
       final first = _image([
         '..##......##....',

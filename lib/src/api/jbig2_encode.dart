@@ -42,6 +42,48 @@ class Jbig2EncodeOptions {
   });
 }
 
+/// Streams for several PDF image XObjects sharing one `/JBIG2Globals` entry.
+class Jbig2EmbeddedPages {
+  /// Global symbol dictionary. Empty when generic regions were selected.
+  final Uint8List globals;
+
+  /// One embedded JBIG2 segment stream per input image, in the same order.
+  final List<Uint8List> pages;
+
+  const Jbig2EmbeddedPages(this.globals, this.pages);
+
+  int get totalLength =>
+      globals.length + pages.fold(0, (total, page) => total + page.length);
+
+  bool get usesGlobalDictionary => globals.isNotEmpty;
+}
+
+/// Encodes PDF image streams with one symbol dictionary shared by all pages.
+///
+/// Put [Jbig2EmbeddedPages.globals] in a `/JBIG2Globals` stream referenced by
+/// every image's `/DecodeParms`, and use the corresponding item from [pages]
+/// as that image's `/JBIG2Decode` data. In `auto` mode the aggregate size,
+/// including the globals stream, is compared with independent generic regions.
+Jbig2EmbeddedPages encodeJbig2EmbeddedPages(
+  List<Jbig2Image> images, {
+  Jbig2EncodeOptions options = const Jbig2EncodeOptions(),
+}) {
+  if (images.isEmpty) {
+    throw ArgumentError('At least one image is required.');
+  }
+  for (final image in images) {
+    if (image.width <= 0 || image.height <= 0) {
+      throw ArgumentError('Every image must have a positive extent.');
+    }
+  }
+  final generic = Jbig2EmbeddedPages(Uint8List(0),
+      [for (final image in images) _encodeGeneric(image, options, false)]);
+  if (options.mode == Jbig2EncodeMode.genericRegion) return generic;
+  final symbolic = _encodeSharedEmbeddedSymbols(images, options);
+  if (options.mode == Jbig2EncodeMode.symbolDictionary) return symbolic;
+  return symbolic.totalLength < generic.totalLength ? symbolic : generic;
+}
+
 /// Encodes [image] as the embedded segment stream PDF's `/JBIG2Decode` filter
 /// expects.
 ///
@@ -316,6 +358,101 @@ bool _sameSymbol(Bitmap a, Bitmap b) {
     if (a.bitmap[index] != b.bitmap[index]) return false;
   }
   return true;
+}
+
+Jbig2EmbeddedPages _encodeSharedEmbeddedSymbols(
+    List<Jbig2Image> images, Jbig2EncodeOptions options) {
+  final dictionary = <Bitmap>[];
+  final byShape = <String, List<int>>{};
+  final pages = <List<ExtractedSymbolInstance>>[];
+  for (final image in images) {
+    final extracted = SymbolExtractor(image.toBitmap()).extract();
+    final remap = <int, int>{};
+    for (var local = 0; local < extracted.dictionary.length; local++) {
+      final symbol = extracted.dictionary[local];
+      final key = '${symbol.width}x${symbol.height}:${symbol.bitmap.join(',')}';
+      var global = -1;
+      for (final candidate in byShape[key] ?? const <int>[]) {
+        if (_sameSymbol(dictionary[candidate], symbol)) {
+          global = candidate;
+          break;
+        }
+      }
+      if (global < 0) {
+        global = dictionary.length;
+        dictionary.add(symbol);
+        byShape.putIfAbsent(key, () => <int>[]).add(global);
+      }
+      remap[local] = global;
+    }
+    pages.add([
+      for (final instance in extracted.instances)
+        ExtractedSymbolInstance(
+            remap[instance.symbol]!, instance.x, instance.y),
+    ]);
+  }
+
+  // Symbol dictionaries encode increasing height classes and widths. Keep the
+  // shared IDs consistent with that order in every page text region.
+  final order = List<int>.generate(dictionary.length, (index) => index)
+    ..sort((a, b) {
+      final height = dictionary[a].height.compareTo(dictionary[b].height);
+      return height != 0
+          ? height
+          : dictionary[a].width.compareTo(dictionary[b].width);
+    });
+  final ordered = <Bitmap>[for (final index in order) dictionary[index]];
+  final reorder = <int, int>{};
+  for (var index = 0; index < order.length; index++) {
+    reorder[order[index]] = index;
+  }
+
+  final globalWriter = Jbig2Writer();
+  if (ordered.isNotEmpty) {
+    globalWriter.writeSegment(
+        number: 0,
+        type: Jbig2SegmentType.symbolDictionary,
+        page: 0,
+        data: Jbig2Writer.symbolDictionary(
+            exportedSymbols: ordered.length,
+            newSymbols: ordered.length,
+            codeword: SymbolDictionaryEncoder.encodeDictionary(ordered)));
+  }
+
+  final streams = <Uint8List>[];
+  for (var index = 0; index < images.length; index++) {
+    final image = images[index];
+    final writer = Jbig2Writer();
+    writer.writeSegment(
+        number: 1,
+        type: Jbig2SegmentType.pageInformation,
+        page: 1,
+        data: Jbig2Writer.pageInformation(
+            width: image.width,
+            height: image.height,
+            xResolution: options.xResolution,
+            yResolution: options.yResolution));
+    final instances = <ExtractedSymbolInstance>[
+      for (final instance in pages[index])
+        ExtractedSymbolInstance(
+            reorder[instance.symbol]!, instance.x, instance.y),
+    ];
+    if (instances.isNotEmpty) {
+      writer.writeSegment(
+          number: 2,
+          type: Jbig2SegmentType.immediateLosslessTextRegion,
+          page: 1,
+          referredTo: const [0],
+          data: Jbig2Writer.textRegion(
+              width: image.width,
+              height: image.height,
+              instances: instances.length,
+              codeword: SymbolDictionaryEncoder.encodeTextRegion(
+                  ordered, instances)));
+    }
+    streams.add(writer.takeBytes());
+  }
+  return Jbig2EmbeddedPages(globalWriter.takeBytes(), streams);
 }
 
 Uint8List? _encodeSymbols(

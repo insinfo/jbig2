@@ -110,6 +110,16 @@ final book = encodeJbig2Pages([cover, page2, page3]);
 final second = decodeJbig2(book, page: 2);
 ```
 
+PDFs can keep that sharing while storing every page as a separate image
+XObject. `encodeJbig2EmbeddedPages` returns one `globals` stream for
+`/DecodeParms /JBIG2Globals` and one embedded stream per input image. `auto`
+compares the aggregate size, including the globals stream:
+
+```dart
+final encoded = encodeJbig2EmbeddedPages([scan1, scan2]);
+final first = decodeJbig2Embedded(encoded.pages[0], globals: encoded.globals);
+```
+
 `encodeJbig2Pages` honours the same `mode` option as the single-page encoder.
 In `auto` mode it compares complete generic-region and shared-dictionary files;
 `genericRegion` can be forced for scanned or photographic bilevel pages.
