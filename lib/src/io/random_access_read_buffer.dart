@@ -37,7 +37,8 @@ class RandomAccessReadBuffer extends RandomAccessRead {
       _currentBuffer = buffer;
       _bufferList.add(buffer);
     } else {
-      final view = Uint8List.view(input.buffer, input.offsetInBytes, input.length);
+      final view =
+          Uint8List.view(input.buffer, input.offsetInBytes, input.length);
       _currentBuffer = view;
       _bufferList.add(view);
     }
@@ -48,9 +49,10 @@ class RandomAccessReadBuffer extends RandomAccessRead {
     final clone = RandomAccessReadBuffer(parent.chunkSize);
     clone._bufferList
       ..clear()
-      ..addAll(parent._bufferList
-          .map((buffer) => Uint8List.view(buffer.buffer, buffer.offsetInBytes, buffer.lengthInBytes)));
-    clone._currentBuffer = clone._bufferList.isNotEmpty ? clone._bufferList[0] : null;
+      ..addAll(parent._bufferList.map((buffer) => Uint8List.view(
+          buffer.buffer, buffer.offsetInBytes, buffer.lengthInBytes)));
+    clone._currentBuffer =
+        clone._bufferList.isNotEmpty ? clone._bufferList[0] : null;
     clone._size = parent._size;
     clone._pointer = 0;
     clone._currentBufferPointer = 0;
@@ -60,7 +62,8 @@ class RandomAccessReadBuffer extends RandomAccessRead {
     return clone;
   }
 
-  static Future<RandomAccessReadBuffer> createBufferFromStream(Stream<List<int>> stream,
+  static Future<RandomAccessReadBuffer> createBufferFromStream(
+      Stream<List<int>> stream,
       {int chunkSize = defaultChunkSize4KB}) async {
     final writable = RandomAccessReadWriteBuffer(chunkSize);
     await for (final chunk in stream) {
@@ -128,7 +131,8 @@ class RandomAccessReadBuffer extends RandomAccessRead {
       if (_currentBufferPointer == _currentBuffer!.length) {
         _nextBuffer();
       }
-      bytesRead += _readRemaining(buffer, offset + bytesRead, requested - bytesRead);
+      bytesRead +=
+          _readRemaining(buffer, offset + bytesRead, requested - bytesRead);
     }
     return bytesRead;
   }
@@ -205,7 +209,8 @@ class RandomAccessReadBuffer extends RandomAccessRead {
   @override
   RandomAccessReadView createView(int startPosition, int streamLength) {
     checkClosed();
-    return RandomAccessReadView(RandomAccessReadBuffer._clone(this), startPosition, streamLength);
+    return RandomAccessReadView(
+        RandomAccessReadBuffer._clone(this), startPosition, streamLength);
   }
 
   void checkClosed() {
@@ -254,11 +259,11 @@ class RandomAccessReadBuffer extends RandomAccessRead {
   }
 }
 
-class RandomAccessReadWriteBuffer extends RandomAccessReadBuffer implements RandomAccess {
-  RandomAccessReadWriteBuffer([int chunkSize = RandomAccessReadBuffer.defaultChunkSize4KB])
-      : super(chunkSize);
+class RandomAccessReadWriteBuffer extends RandomAccessReadBuffer
+    implements RandomAccess {
+  RandomAccessReadWriteBuffer([super.chunkSize]);
 
-  RandomAccessReadWriteBuffer.withChunkSize(int chunkSize) : super(chunkSize);
+  RandomAccessReadWriteBuffer.withChunkSize(super.chunkSize);
 
   @override
   void clear() {
@@ -291,7 +296,8 @@ class RandomAccessReadWriteBuffer extends RandomAccessReadBuffer implements Rand
       _ensureWriteCapacity(1);
       final availableInChunk = _currentBuffer!.length - _currentBufferPointer;
       final toWrite = math.min(remaining, availableInChunk);
-      final view = Uint8List.view(buffer.buffer, buffer.offsetInBytes + currentOffset, toWrite);
+      final view = Uint8List.view(
+          buffer.buffer, buffer.offsetInBytes + currentOffset, toWrite);
       _currentBuffer!.setRange(
           _currentBufferPointer, _currentBufferPointer + toWrite, view);
       _currentBufferPointer += toWrite;

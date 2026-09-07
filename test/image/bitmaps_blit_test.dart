@@ -36,7 +36,7 @@ void main() {
       final roi = Rectangle(100, 100, 100, 100);
       final src = Bitmap(roi.width, roi.height);
       // src is blank (all zeros)
-      
+
       Bitmaps.blit(src, dst, roi.x, roi.y, CombinationOperator.REPLACE);
 
       final dstRegionBitmap = Bitmaps.extract(roi, dst);

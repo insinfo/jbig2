@@ -14,7 +14,8 @@ class Bitmaps {
     final int padding = (8 - dst.width & 0x07);
     int srcLineStartIdx = src.getByteIndex(roi.x, roi.y);
     int srcLineEndIdx = src.getByteIndex(roi.x + roi.width - 1, roi.y);
-    final bool usePadding = dst.rowStride == srcLineEndIdx + 1 - srcLineStartIdx;
+    final bool usePadding =
+        dst.rowStride == srcLineEndIdx + 1 - srcLineStartIdx;
 
     for (int y = roi.y; y < roi.maxY; y++) {
       int srcIdx = srcLineStartIdx;
@@ -34,7 +35,8 @@ class Bitmaps {
           dst.setByte(dstIdx++, value);
         }
       } else {
-        copyLine(src, dst, upShift, downShift, padding, srcLineStartIdx, srcLineEndIdx, usePadding, srcIdx, dstIdx);
+        copyLine(src, dst, upShift, downShift, padding, srcLineStartIdx,
+            srcLineEndIdx, usePadding, srcIdx, dstIdx);
       }
 
       srcLineStartIdx += src.rowStride;
@@ -45,10 +47,18 @@ class Bitmaps {
     return dst;
   }
 
-  static void copyLine(Bitmap src, Bitmap dst, int sourceUpShift, int sourceDownShift, int padding,
-      int firstSourceByteOfLine, int lastSourceByteOfLine, bool usePadding, int sourceOffset, int targetOffset) {
+  static void copyLine(
+      Bitmap src,
+      Bitmap dst,
+      int sourceUpShift,
+      int sourceDownShift,
+      int padding,
+      int firstSourceByteOfLine,
+      int lastSourceByteOfLine,
+      bool usePadding,
+      int sourceOffset,
+      int targetOffset) {
     for (int x = firstSourceByteOfLine; x < lastSourceByteOfLine; x++) {
-
       if (sourceOffset + 1 < src.getByteArray().length) {
         final bool isLastByte = x + 1 == lastSourceByteOfLine;
         int val1 = (src.getByte(sourceOffset++) << sourceUpShift) & 0xFF;
@@ -62,10 +72,10 @@ class Bitmaps {
         dst.setByte(targetOffset++, value);
 
         if (isLastByte && usePadding) {
-          value = unpad(padding, ((src.getByte(sourceOffset) & 0xFF) << sourceUpShift) & 0xFF);
+          value = unpad(padding,
+              ((src.getByte(sourceOffset) & 0xFF) << sourceUpShift) & 0xFF);
           dst.setByte(targetOffset, value);
         }
-
       } else {
         final int value = (src.getByte(sourceOffset++) << sourceUpShift) & 0xFF;
         dst.setByte(targetOffset++, value);
@@ -129,25 +139,37 @@ class Bitmaps {
       blitUnshifted(src, dst, startLine, lastLine, dstStartIdx, srcStartIdx,
           srcEndIdx, combinationOperator);
     } else if (specialCase) {
-      blitSpecialShifted(src, dst, startLine, lastLine, dstStartIdx,
-          srcStartIdx, srcEndIdx, toShift, shiftVal1, shiftVal2,
+      blitSpecialShifted(
+          src,
+          dst,
+          startLine,
+          lastLine,
+          dstStartIdx,
+          srcStartIdx,
+          srcEndIdx,
+          toShift,
+          shiftVal1,
+          shiftVal2,
           combinationOperator);
     } else {
-      blitShifted(src, dst, startLine, lastLine, dstStartIdx, srcStartIdx,
-          srcEndIdx, toShift, shiftVal1, shiftVal2, combinationOperator,
+      blitShifted(
+          src,
+          dst,
+          startLine,
+          lastLine,
+          dstStartIdx,
+          srcStartIdx,
+          srcEndIdx,
+          toShift,
+          shiftVal1,
+          shiftVal2,
+          combinationOperator,
           padding);
     }
   }
 
-  static void blitUnshifted(
-      Bitmap src,
-      Bitmap dst,
-      int startLine,
-      int lastLine,
-      int dstStartIdx,
-      int srcStartIdx,
-      int srcEndIdx,
-      CombinationOperator op) {
+  static void blitUnshifted(Bitmap src, Bitmap dst, int startLine, int lastLine,
+      int dstStartIdx, int srcStartIdx, int srcEndIdx, CombinationOperator op) {
     for (int dstLine = startLine;
         dstLine < lastLine;
         dstLine++,
@@ -189,7 +211,8 @@ class Bitmaps {
       // Go through the bytes in a line of the Symbol
       for (int srcIdx = srcStartIdx; srcIdx <= srcEndIdx; srcIdx++) {
         int oldByte = dst.getByte(dstIdx);
-        register = ((register | src.getByte(srcIdx)) << shiftVal2) & 0xffff; // Keep it within reasonable bounds, though int is 64bit
+        register = ((register | src.getByte(srcIdx)) << shiftVal2) &
+            0xffff; // Keep it within reasonable bounds, though int is 64bit
         int newByte = (register >> 8) & 0xff;
 
         if (srcIdx == srcEndIdx) {
@@ -198,7 +221,8 @@ class Bitmaps {
 
         dst.setByte(dstIdx++, combineBytes(oldByte, newByte, op));
         register <<= shiftVal1;
-        register &= 0xffff; // Mask to simulate short behavior if needed, but here we just need bits
+        register &=
+            0xffff; // Mask to simulate short behavior if needed, but here we just need bits
       }
     }
   }

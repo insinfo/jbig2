@@ -6,26 +6,26 @@ import '../util/combination_operator.dart';
 class RegionSegmentInformation implements SegmentData {
   SubInputStream? subInputStream;
 
-  /** Region segment bitmap width, 7.4.1.1 */
+  /// Region segment bitmap width, 7.4.1.1
   int bitmapWidth = 0;
 
-  /** Region segment bitmap height, 7.4.1.2 */
+  /// Region segment bitmap height, 7.4.1.2
   int bitmapHeight = 0;
 
-  /** Region segment bitmap X location, 7.4.1.3 */
+  /// Region segment bitmap X location, 7.4.1.3
   int xLocation = 0;
 
-  /** Region segment bitmap Y location, 7.4.1.4 */
+  /// Region segment bitmap Y location, 7.4.1.4
   int yLocation = 0;
 
-  /** Region segment flags, 7.4.1.5 */
+  /// Region segment flags, 7.4.1.5
   CombinationOperator combinationOperator = CombinationOperator.OR;
 
   RegionSegmentInformation([this.subInputStream]);
 
   void parseHeader() {
     if (subInputStream == null) return;
-    
+
     bitmapWidth = subInputStream!.readBits(32);
     bitmapHeight = subInputStream!.readBits(32);
     xLocation = _toSigned32(subInputStream!.readBits(32));

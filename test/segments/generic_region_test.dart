@@ -17,12 +17,12 @@ void main() {
     final bytes = file.readAsBytesSync();
     final rar = RandomAccessReadBuffer.fromBytes(bytes);
     final sis = SubInputStream(rar, 523, 35);
-    
+
     final gr = GenericRegion(sis);
-    
+
     // We pass null for header as in the Java test.
     gr.init(null, sis);
-    
+
     expect(gr.getRegionInfo().bitmapWidth, 54);
     expect(gr.getRegionInfo().bitmapHeight, 44);
     expect(gr.getRegionInfo().getXLocation(), 4);

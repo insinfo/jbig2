@@ -129,18 +129,11 @@ class GenericRefinementRegion implements Region {
       /* 6.3.5.6 - 1) */
       int isLineTypicalPredicted = 0;
 
-      if (_referenceBitmap == null) {
-        // Get the reference bitmap, which is the base of refinement process
-        _referenceBitmap = _getGrReference();
-      }
+      _referenceBitmap ??= _getGrReference();
 
-      if (_arithDecoder == null) {
-        _arithDecoder = ArithmeticDecoder(_subInputStream!);
-      }
+      _arithDecoder ??= ArithmeticDecoder(_subInputStream!);
 
-      if (_cx == null) {
-        _cx = CX(8192, 1);
-      }
+      _cx ??= CX(8192, 1);
 
       /* 6.3.5.6 - 2) */
       _regionBitmap = Bitmap(_regionInfo.bitmapWidth, _regionInfo.bitmapHeight);
@@ -151,7 +144,8 @@ class GenericRefinementRegion implements Region {
       }
 
       final int paddedWidth = (_regionBitmap!.width + 7) & -8;
-      final int deltaRefStride = _isTPGROn ? -_referenceDY * _referenceBitmap!.rowStride : 0;
+      final int deltaRefStride =
+          _isTPGROn ? -_referenceDY * _referenceBitmap!.rowStride : 0;
       final int yOffset = deltaRefStride + 1;
 
       /* 6.3.5.6 - 3 */
@@ -163,12 +157,23 @@ class GenericRefinementRegion implements Region {
 
         if (isLineTypicalPredicted == 0) {
           /* 6.3.5.6 - 3 c) */
-          _decodeOptimized(y, _regionBitmap!.width, _regionBitmap!.rowStride, _referenceBitmap!.rowStride,
-              paddedWidth, deltaRefStride, yOffset);
+          _decodeOptimized(
+              y,
+              _regionBitmap!.width,
+              _regionBitmap!.rowStride,
+              _referenceBitmap!.rowStride,
+              paddedWidth,
+              deltaRefStride,
+              yOffset);
         } else {
           /* 6.3.5.6 - 3 d) */
-          _decodeTypicalPredictedLine(y, _regionBitmap!.width, _regionBitmap!.rowStride,
-              _referenceBitmap!.rowStride, paddedWidth, deltaRefStride);
+          _decodeTypicalPredictedLine(
+              y,
+              _regionBitmap!.width,
+              _regionBitmap!.rowStride,
+              _referenceBitmap!.rowStride,
+              paddedWidth,
+              deltaRefStride);
         }
       }
     }
@@ -187,42 +192,81 @@ class GenericRefinementRegion implements Region {
     return region.getRegionBitmap();
   }
 
-  void _decodeOptimized(final int lineNumber, final int width, final int rowStride, final int refRowStride,
-      final int paddedWidth, final int deltaRefStride, final int lineOffset) {
-
+  void _decodeOptimized(
+      final int lineNumber,
+      final int width,
+      final int rowStride,
+      final int refRowStride,
+      final int paddedWidth,
+      final int deltaRefStride,
+      final int lineOffset) {
     // Offset of the reference bitmap with respect to the bitmap being decoded
     // For example: if referenceDY = -1, y is 1 HIGHER that currY
     final int currentLine = lineNumber - _referenceDY;
-    final int referenceByteIndex = _referenceBitmap!.getByteIndex(0 > -_referenceDX ? 0 : -_referenceDX, currentLine);
+    final int referenceByteIndex = _referenceBitmap!
+        .getByteIndex(0 > -_referenceDX ? 0 : -_referenceDX, currentLine);
 
-    final int byteIndex = _regionBitmap!.getByteIndex(0 > _referenceDX ? 0 : _referenceDX, lineNumber);
+    final int byteIndex = _regionBitmap!
+        .getByteIndex(0 > _referenceDX ? 0 : _referenceDX, lineNumber);
 
     switch (_templateID) {
       case 0:
-        _decodeTemplate(lineNumber, width, rowStride, refRowStride, paddedWidth, deltaRefStride, lineOffset, byteIndex,
-            currentLine, referenceByteIndex, _t0);
+        _decodeTemplate(
+            lineNumber,
+            width,
+            rowStride,
+            refRowStride,
+            paddedWidth,
+            deltaRefStride,
+            lineOffset,
+            byteIndex,
+            currentLine,
+            referenceByteIndex,
+            _t0);
         break;
       case 1:
-        _decodeTemplate(lineNumber, width, rowStride, refRowStride, paddedWidth, deltaRefStride, lineOffset, byteIndex,
-            currentLine, referenceByteIndex, _t1);
+        _decodeTemplate(
+            lineNumber,
+            width,
+            rowStride,
+            refRowStride,
+            paddedWidth,
+            deltaRefStride,
+            lineOffset,
+            byteIndex,
+            currentLine,
+            referenceByteIndex,
+            _t1);
         break;
     }
   }
 
-  void _decodeTemplate(final int lineNumber, final int width, final int rowStride, final int refRowStride,
-      final int paddedWidth, final int deltaRefStride, final int lineOffset, int byteIndex, final int currentLine,
-      int refByteIndex, Template templateFormation) {
+  void _decodeTemplate(
+      final int lineNumber,
+      final int width,
+      final int rowStride,
+      final int refRowStride,
+      final int paddedWidth,
+      final int deltaRefStride,
+      final int lineOffset,
+      int byteIndex,
+      final int currentLine,
+      int refByteIndex,
+      Template templateFormation) {
     int c1, c2, c3, c4, c5;
 
     int w1, w2, w3, w4;
     w1 = w2 = w3 = w4 = 0;
 
-    if (currentLine >= 1 && (currentLine - 1) < _referenceBitmap!.height)
+    if (currentLine >= 1 && (currentLine - 1) < _referenceBitmap!.height) {
       w1 = _referenceBitmap!.getByteAsInteger(refByteIndex - refRowStride);
-    if (currentLine >= 0 && currentLine < _referenceBitmap!.height)
+    }
+    if (currentLine >= 0 && currentLine < _referenceBitmap!.height) {
       w2 = _referenceBitmap!.getByteAsInteger(refByteIndex);
-    if (currentLine >= -1 && currentLine + 1 < _referenceBitmap!.height)
+    }
+    if (currentLine >= -1 && currentLine + 1 < _referenceBitmap!.height) {
       w3 = _referenceBitmap!.getByteAsInteger(refByteIndex + refRowStride);
+    }
     refByteIndex++;
 
     if (lineNumber >= 1) {
@@ -240,24 +284,37 @@ class GenericRefinementRegion implements Region {
       c3 = ((shiftOffset >= 8 ? 0 : w3 >> shiftOffset) & 0x07);
       if (shiftOffset == 6 && modRefByteIdx > 1) {
         if (currentLine >= 1 && (currentLine - 1) < _referenceBitmap!.height) {
-          c1 |= _referenceBitmap!.getByteAsInteger(refByteIndex - refRowStride - 2) << 2 & 0x04;
+          c1 |= _referenceBitmap!
+                      .getByteAsInteger(refByteIndex - refRowStride - 2) <<
+                  2 &
+              0x04;
         }
         if (currentLine >= 0 && currentLine < _referenceBitmap!.height) {
-          c2 |= _referenceBitmap!.getByteAsInteger(refByteIndex - 2) << 2 & 0x04;
+          c2 |=
+              _referenceBitmap!.getByteAsInteger(refByteIndex - 2) << 2 & 0x04;
         }
         if (currentLine >= -1 && currentLine + 1 < _referenceBitmap!.height) {
-          c3 |= _referenceBitmap!.getByteAsInteger(refByteIndex + refRowStride - 2) << 2 & 0x04;
+          c3 |= _referenceBitmap!
+                      .getByteAsInteger(refByteIndex + refRowStride - 2) <<
+                  2 &
+              0x04;
         }
       }
       if (shiftOffset == 0) {
         w1 = w2 = w3 = 0;
         if (modRefByteIdx < refRowStride - 1) {
-          if (currentLine >= 1 && (currentLine - 1) < _referenceBitmap!.height)
-            w1 = _referenceBitmap!.getByteAsInteger(refByteIndex - refRowStride);
-          if (currentLine >= 0 && currentLine < _referenceBitmap!.height)
+          if (currentLine >= 1 &&
+              (currentLine - 1) < _referenceBitmap!.height) {
+            w1 =
+                _referenceBitmap!.getByteAsInteger(refByteIndex - refRowStride);
+          }
+          if (currentLine >= 0 && currentLine < _referenceBitmap!.height) {
             w2 = _referenceBitmap!.getByteAsInteger(refByteIndex);
-          if (currentLine >= -1 && currentLine + 1 < _referenceBitmap!.height)
-            w3 = _referenceBitmap!.getByteAsInteger(refByteIndex + refRowStride);
+          }
+          if (currentLine >= -1 && currentLine + 1 < _referenceBitmap!.height) {
+            w3 =
+                _referenceBitmap!.getByteAsInteger(refByteIndex + refRowStride);
+          }
         }
         refByteIndex++;
       }
@@ -267,12 +324,15 @@ class GenericRefinementRegion implements Region {
       c3 = ((w3 << 1) & 0x07);
       w1 = w2 = w3 = 0;
       if (modRefByteIdx < refRowStride - 1) {
-        if (currentLine >= 1 && (currentLine - 1) < _referenceBitmap!.height)
+        if (currentLine >= 1 && (currentLine - 1) < _referenceBitmap!.height) {
           w1 = _referenceBitmap!.getByteAsInteger(refByteIndex - refRowStride);
-        if (currentLine >= 0 && currentLine < _referenceBitmap!.height)
+        }
+        if (currentLine >= 0 && currentLine < _referenceBitmap!.height) {
           w2 = _referenceBitmap!.getByteAsInteger(refByteIndex);
-        if (currentLine >= -1 && currentLine + 1 < _referenceBitmap!.height)
+        }
+        if (currentLine >= -1 && currentLine + 1 < _referenceBitmap!.height) {
           w3 = _referenceBitmap!.getByteAsInteger(refByteIndex + refRowStride);
+        }
         refByteIndex++;
       }
       c1 |= ((w1 >> 7) & 0x07);
@@ -296,8 +356,12 @@ class GenericRefinementRegion implements Region {
       final int tval = templateFormation.form(c1, c2, c3, c4, c5);
 
       if (_override) {
-        _cx!.setIndex(_overrideAtTemplate0(tval, x, lineNumber,
-            _regionBitmap!.getByte(_regionBitmap!.getByteIndex(x, lineNumber)), minorX));
+        _cx!.setIndex(_overrideAtTemplate0(
+            tval,
+            x,
+            lineNumber,
+            _regionBitmap!.getByte(_regionBitmap!.getByteIndex(x, lineNumber)),
+            minorX));
       } else {
         _cx!.setIndex(tval);
       }
@@ -314,8 +378,10 @@ class GenericRefinementRegion implements Region {
         if (((x - _referenceDX) ~/ 8) + 1 >= _referenceBitmap!.rowStride) {
           w1 = w2 = w3 = 0;
         } else {
-          if (currentLine >= 1 && (currentLine - 1 < _referenceBitmap!.height)) {
-            w1 = _referenceBitmap!.getByteAsInteger(refByteIndex - refRowStride);
+          if (currentLine >= 1 &&
+              (currentLine - 1 < _referenceBitmap!.height)) {
+            w1 =
+                _referenceBitmap!.getByteAsInteger(refByteIndex - refRowStride);
           } else {
             w1 = 0;
           }
@@ -324,8 +390,10 @@ class GenericRefinementRegion implements Region {
           } else {
             w2 = 0;
           }
-          if (currentLine >= -1 && (currentLine + 1) < _referenceBitmap!.height) {
-            w3 = _referenceBitmap!.getByteAsInteger(refByteIndex + refRowStride);
+          if (currentLine >= -1 &&
+              (currentLine + 1) < _referenceBitmap!.height) {
+            w3 =
+                _referenceBitmap!.getByteAsInteger(refByteIndex + refRowStride);
           } else {
             w3 = 0;
           }
@@ -347,7 +415,6 @@ class GenericRefinementRegion implements Region {
       } else {
         w4 <<= 1;
       }
-
     }
   }
 
@@ -382,9 +449,13 @@ class GenericRefinementRegion implements Region {
     }
   }
 
-  void _decodeTypicalPredictedLine(final int lineNumber, final int width, final int rowStride,
-      final int refRowStride, final int paddedWidth, final int deltaRefStride) {
-
+  void _decodeTypicalPredictedLine(
+      final int lineNumber,
+      final int width,
+      final int rowStride,
+      final int refRowStride,
+      final int paddedWidth,
+      final int deltaRefStride) {
     // Offset of the reference bitmap with respect to the bitmap being
     // decoded
     // For example: if grReferenceDY = -1, y is 1 HIGHER that currY
@@ -395,18 +466,41 @@ class GenericRefinementRegion implements Region {
 
     switch (_templateID) {
       case 0:
-        _decodeTypicalPredictedLineTemplate0(lineNumber, width, rowStride, refRowStride, paddedWidth, deltaRefStride,
-            byteIndex, currentLine, refByteIndex);
+        _decodeTypicalPredictedLineTemplate0(
+            lineNumber,
+            width,
+            rowStride,
+            refRowStride,
+            paddedWidth,
+            deltaRefStride,
+            byteIndex,
+            currentLine,
+            refByteIndex);
         break;
       case 1:
-        _decodeTypicalPredictedLineTemplate1(lineNumber, width, rowStride, refRowStride, paddedWidth, deltaRefStride,
-            byteIndex, currentLine, refByteIndex);
+        _decodeTypicalPredictedLineTemplate1(
+            lineNumber,
+            width,
+            rowStride,
+            refRowStride,
+            paddedWidth,
+            deltaRefStride,
+            byteIndex,
+            currentLine,
+            refByteIndex);
         break;
     }
   }
 
-  void _decodeTypicalPredictedLineTemplate0(final int lineNumber, final int width, final int rowStride,
-      final int refRowStride, final int paddedWidth, final int deltaRefStride, int byteIndex, final int currentLine,
+  void _decodeTypicalPredictedLineTemplate0(
+      final int lineNumber,
+      final int width,
+      final int rowStride,
+      final int refRowStride,
+      final int paddedWidth,
+      final int deltaRefStride,
+      int byteIndex,
+      final int currentLine,
       int refByteIndex) {
     int context;
     int overriddenContext;
@@ -423,25 +517,32 @@ class GenericRefinementRegion implements Region {
     }
 
     if (currentLine > 0 && currentLine <= _referenceBitmap!.height) {
-      previousReferenceLine = _referenceBitmap!.getByteAsInteger(refByteIndex - refRowStride + deltaRefStride) << 4;
+      previousReferenceLine = _referenceBitmap!
+              .getByteAsInteger(refByteIndex - refRowStride + deltaRefStride) <<
+          4;
     } else {
       previousReferenceLine = 0;
     }
 
     if (currentLine >= 0 && currentLine < _referenceBitmap!.height) {
-      currentReferenceLine = _referenceBitmap!.getByteAsInteger(refByteIndex + deltaRefStride) << 1;
+      currentReferenceLine =
+          _referenceBitmap!.getByteAsInteger(refByteIndex + deltaRefStride) <<
+              1;
     } else {
       currentReferenceLine = 0;
     }
 
     if (currentLine > -2 && currentLine < (_referenceBitmap!.height - 1)) {
-      nextReferenceLine = _referenceBitmap!.getByteAsInteger(refByteIndex + refRowStride + deltaRefStride);
+      nextReferenceLine = _referenceBitmap!
+          .getByteAsInteger(refByteIndex + refRowStride + deltaRefStride);
     } else {
       nextReferenceLine = 0;
     }
 
-    context = ((previousLine >> 5) & 0x6) | ((nextReferenceLine >> 2) & 0x30) | (currentReferenceLine & 0x180)
-        | (previousReferenceLine & 0xc00);
+    context = ((previousLine >> 5) & 0x6) |
+        ((nextReferenceLine >> 2) & 0x30) |
+        (currentReferenceLine & 0x180) |
+        (previousReferenceLine & 0xc00);
 
     int nextByte;
     for (int x = 0; x < paddedWidth; x = nextByte) {
@@ -454,23 +555,35 @@ class GenericRefinementRegion implements Region {
       final int yOffset = deltaRefStride + 1;
 
       if (lineNumber > 0) {
-        previousLine = (previousLine << 8)
-            | (readNextByte ? _regionBitmap!.getByteAsInteger(byteIndex - rowStride + 1) : 0);
+        previousLine = (previousLine << 8) |
+            (readNextByte
+                ? _regionBitmap!.getByteAsInteger(byteIndex - rowStride + 1)
+                : 0);
       }
 
       if (currentLine > 0 && currentLine <= _referenceBitmap!.height) {
-        previousReferenceLine = (previousReferenceLine << 8)
-            | (refReadNextByte ? _referenceBitmap!.getByteAsInteger(refByteIndex - refRowStride + yOffset) << 4 : 0);
+        previousReferenceLine = (previousReferenceLine << 8) |
+            (refReadNextByte
+                ? _referenceBitmap!.getByteAsInteger(
+                        refByteIndex - refRowStride + yOffset) <<
+                    4
+                : 0);
       }
 
       if (currentLine >= 0 && currentLine < _referenceBitmap!.height) {
-        currentReferenceLine = (currentReferenceLine << 8)
-            | (refReadNextByte ? _referenceBitmap!.getByteAsInteger(refByteIndex + yOffset) << 1 : 0);
+        currentReferenceLine = (currentReferenceLine << 8) |
+            (refReadNextByte
+                ? _referenceBitmap!.getByteAsInteger(refByteIndex + yOffset) <<
+                    1
+                : 0);
       }
 
       if (currentLine > -2 && currentLine < (_referenceBitmap!.height - 1)) {
-        nextReferenceLine = (nextReferenceLine << 8)
-            | (refReadNextByte ? _referenceBitmap!.getByteAsInteger(refByteIndex + refRowStride + yOffset) : 0);
+        nextReferenceLine = (nextReferenceLine << 8) |
+            (refReadNextByte
+                ? _referenceBitmap!
+                    .getByteAsInteger(refByteIndex + refRowStride + yOffset)
+                : 0);
       }
 
       for (int minorX = 0; minorX < minorWidth; minorX++) {
@@ -492,7 +605,8 @@ class GenericRefinementRegion implements Region {
           // iii) - is like 3 c) but for one pixel only
 
           if (_override) {
-            overriddenContext = _overrideAtTemplate0(context, x + minorX, lineNumber, result, minorX);
+            overriddenContext = _overrideAtTemplate0(
+                context, x + minorX, lineNumber, result, minorX);
             _cx!.setIndex(overriddenContext);
           } else {
             _cx!.setIndex(context);
@@ -503,17 +617,27 @@ class GenericRefinementRegion implements Region {
         final int toShift = 7 - minorX;
         result |= bit << toShift;
 
-        context = ((context & 0xdb6) << 1) | bit | ((previousLine >> toShift + 5) & 0x002)
-            | ((nextReferenceLine >> toShift + 2) & 0x010) | ((currentReferenceLine >> toShift) & 0x080)
-            | ((previousReferenceLine >> toShift) & 0x400);
+        context = ((context & 0xdb6) << 1) |
+            bit |
+            ((previousLine >> toShift + 5) & 0x002) |
+            ((nextReferenceLine >> toShift + 2) & 0x010) |
+            ((currentReferenceLine >> toShift) & 0x080) |
+            ((previousReferenceLine >> toShift) & 0x400);
       }
       _regionBitmap!.setByte(byteIndex++, result);
       refByteIndex++;
     }
   }
 
-  void _decodeTypicalPredictedLineTemplate1(final int lineNumber, final int width, final int rowStride,
-      final int refRowStride, final int paddedWidth, final int deltaRefStride, int byteIndex, final int currentLine,
+  void _decodeTypicalPredictedLineTemplate1(
+      final int lineNumber,
+      final int width,
+      final int rowStride,
+      final int refRowStride,
+      final int paddedWidth,
+      final int deltaRefStride,
+      int byteIndex,
+      final int currentLine,
       int refByteIndex) {
     int context;
     int grReferenceValue;
@@ -530,28 +654,35 @@ class GenericRefinementRegion implements Region {
     }
 
     if (currentLine > 0 && currentLine <= _referenceBitmap!.height) {
-      previousReferenceLine = _referenceBitmap!.getByteAsInteger(byteIndex - refRowStride + deltaRefStride) << 2;
+      previousReferenceLine = _referenceBitmap!
+              .getByteAsInteger(byteIndex - refRowStride + deltaRefStride) <<
+          2;
     } else {
       previousReferenceLine = 0;
     }
 
     if (currentLine >= 0 && currentLine < _referenceBitmap!.height) {
-      currentReferenceLine = _referenceBitmap!.getByteAsInteger(byteIndex + deltaRefStride);
+      currentReferenceLine =
+          _referenceBitmap!.getByteAsInteger(byteIndex + deltaRefStride);
     } else {
       currentReferenceLine = 0;
     }
 
     if (currentLine > -2 && currentLine < (_referenceBitmap!.height - 1)) {
-      nextReferenceLine = _referenceBitmap!.getByteAsInteger(byteIndex + refRowStride + deltaRefStride);
+      nextReferenceLine = _referenceBitmap!
+          .getByteAsInteger(byteIndex + refRowStride + deltaRefStride);
     } else {
       nextReferenceLine = 0;
     }
 
-    context = ((previousLine >> 5) & 0x6) | ((nextReferenceLine >> 2) & 0x30) | (currentReferenceLine & 0xc0)
-        | (previousReferenceLine & 0x200);
+    context = ((previousLine >> 5) & 0x6) |
+        ((nextReferenceLine >> 2) & 0x30) |
+        (currentReferenceLine & 0xc0) |
+        (previousReferenceLine & 0x200);
 
-    grReferenceValue = ((nextReferenceLine >> 2) & 0x70) | (currentReferenceLine & 0xc0)
-        | (previousReferenceLine & 0x700);
+    grReferenceValue = ((nextReferenceLine >> 2) & 0x70) |
+        (currentReferenceLine & 0xc0) |
+        (previousReferenceLine & 0x700);
 
     int nextByte;
     for (int x = 0; x < paddedWidth; x = nextByte) {
@@ -564,23 +695,34 @@ class GenericRefinementRegion implements Region {
       final int yOffset = deltaRefStride + 1;
 
       if (lineNumber > 0) {
-        previousLine = (previousLine << 8)
-            | (readNextByte ? _regionBitmap!.getByteAsInteger(byteIndex - rowStride + 1) : 0);
+        previousLine = (previousLine << 8) |
+            (readNextByte
+                ? _regionBitmap!.getByteAsInteger(byteIndex - rowStride + 1)
+                : 0);
       }
 
       if (currentLine > 0 && currentLine <= _referenceBitmap!.height) {
-        previousReferenceLine = (previousReferenceLine << 8)
-            | (refReadNextByte ? _referenceBitmap!.getByteAsInteger(refByteIndex - refRowStride + yOffset) << 2 : 0);
+        previousReferenceLine = (previousReferenceLine << 8) |
+            (refReadNextByte
+                ? _referenceBitmap!.getByteAsInteger(
+                        refByteIndex - refRowStride + yOffset) <<
+                    2
+                : 0);
       }
 
       if (currentLine >= 0 && currentLine < _referenceBitmap!.height) {
-        currentReferenceLine = (currentReferenceLine << 8)
-            | (refReadNextByte ? _referenceBitmap!.getByteAsInteger(refByteIndex + yOffset) : 0);
+        currentReferenceLine = (currentReferenceLine << 8) |
+            (refReadNextByte
+                ? _referenceBitmap!.getByteAsInteger(refByteIndex + yOffset)
+                : 0);
       }
 
       if (currentLine > -2 && currentLine < (_referenceBitmap!.height - 1)) {
-        nextReferenceLine = (nextReferenceLine << 8)
-            | (refReadNextByte ? _referenceBitmap!.getByteAsInteger(refByteIndex + refRowStride + yOffset) : 0);
+        nextReferenceLine = (nextReferenceLine << 8) |
+            (refReadNextByte
+                ? _referenceBitmap!
+                    .getByteAsInteger(refByteIndex + refRowStride + yOffset)
+                : 0);
       }
 
       for (int minorX = 0; minorX < minorWidth; minorX++) {
@@ -601,25 +743,32 @@ class GenericRefinementRegion implements Region {
         final int toShift = 7 - minorX;
         result |= bit << toShift;
 
-        context = ((context & 0x0d6) << 1) | bit | ((previousLine >> toShift + 5) & 0x002)
-            | ((nextReferenceLine >> toShift + 2) & 0x010) | ((currentReferenceLine >> toShift) & 0x040)
-            | ((previousReferenceLine >> toShift) & 0x200);
+        context = ((context & 0x0d6) << 1) |
+            bit |
+            ((previousLine >> toShift + 5) & 0x002) |
+            ((nextReferenceLine >> toShift + 2) & 0x010) |
+            ((currentReferenceLine >> toShift) & 0x040) |
+            ((previousReferenceLine >> toShift) & 0x200);
 
-        grReferenceValue = ((grReferenceValue & 0x0db) << 1) | ((nextReferenceLine >> toShift + 2) & 0x010)
-            | ((currentReferenceLine >> toShift) & 0x080) | ((previousReferenceLine >> toShift) & 0x400);
+        grReferenceValue = ((grReferenceValue & 0x0db) << 1) |
+            ((nextReferenceLine >> toShift + 2) & 0x010) |
+            ((currentReferenceLine >> toShift) & 0x080) |
+            ((previousReferenceLine >> toShift) & 0x400);
       }
       _regionBitmap!.setByte(byteIndex++, result);
       refByteIndex++;
     }
   }
 
-  int _overrideAtTemplate0(int context, final int x, final int y, final int result, final int minorX) {
+  int _overrideAtTemplate0(int context, final int x, final int y,
+      final int result, final int minorX) {
     if (_grAtOverride![0]) {
       context &= 0xfff7;
       if (_grAtY![0] == 0 && _grAtX![0] >= -minorX) {
         context |= (result >> (7 - (minorX + _grAtX![0])) & 0x1) << 3;
       } else {
-        context |= _getPixel(_regionBitmap!, x + _grAtX![0], y + _grAtY![0]) << 3;
+        context |=
+            _getPixel(_regionBitmap!, x + _grAtX![0], y + _grAtY![0]) << 3;
       }
     }
 
@@ -628,7 +777,9 @@ class GenericRefinementRegion implements Region {
       if (_grAtY![1] == 0 && _grAtX![1] >= -minorX) {
         context |= (result >> (7 - (minorX + _grAtX![1])) & 0x1) << 12;
       } else {
-        context |= _getPixel(_referenceBitmap!, x + _grAtX![1] + _referenceDX, y + _grAtY![1] + _referenceDY) << 12;
+        context |= _getPixel(_referenceBitmap!, x + _grAtX![1] + _referenceDX,
+                y + _grAtY![1] + _referenceDY) <<
+            12;
       }
     }
     return context;
@@ -680,11 +831,11 @@ class GenericRefinementRegion implements Region {
     _grAtY = grAtY;
 
     _regionBitmap = null;
-    
+
     if (_templateID == 0) {
-       _template = _t0;
+      _template = _t0;
     } else {
-       _template = _t1;
+      _template = _t1;
     }
   }
 }

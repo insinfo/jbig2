@@ -137,7 +137,6 @@ class ArithmeticDecoder {
       a <<= 1;
       c <<= 1;
       ct--;
-
     } while ((a & 0x8000) == 0);
 
     c &= 0xffffffff;

@@ -57,7 +57,7 @@ class SymbolDictionary implements Dictionary {
   HuffmanTable? _aggInstTable;
 
   List<Bitmap>? _exportSymbols;
-  List<Bitmap> _sbSymbols = [];
+  final List<Bitmap> _sbSymbols = [];
 
   ArithmeticDecoder? _arithmeticDecoder;
   ArithmeticIntegerDecoder? _integerDecoder;
@@ -99,7 +99,8 @@ class SymbolDictionary implements Dictionary {
       final List<SegmentHeader> rtSegments = _segmentHeader!.rtSegments;
       for (int i = rtSegments.length - 1; i >= 0; i--) {
         if (rtSegments[i].segmentType == 0) {
-          final SymbolDictionary symbolDictionary = rtSegments[i].getSegmentData() as SymbolDictionary;
+          final SymbolDictionary symbolDictionary =
+              rtSegments[i].getSegmentData() as SymbolDictionary;
           if (symbolDictionary._isCodingContextRetained) {
             _setRetainedCodingContexts(symbolDictionary);
           }
@@ -188,24 +189,57 @@ class SymbolDictionary implements Dictionary {
   }
 
   void _checkInput() {
-    if (_sdHuffDecodeHeightSelection == 2) Logger.info("sdHuffDecodeHeightSelection = $_sdHuffDecodeHeightSelection (value not permitted)");
-    if (_sdHuffDecodeWidthSelection == 2) Logger.info("sdHuffDecodeWidthSelection = $_sdHuffDecodeWidthSelection (value not permitted)");
+    if (_sdHuffDecodeHeightSelection == 2) {
+      Logger.info(
+          "sdHuffDecodeHeightSelection = $_sdHuffDecodeHeightSelection (value not permitted)");
+    }
+    if (_sdHuffDecodeWidthSelection == 2) {
+      Logger.info(
+          "sdHuffDecodeWidthSelection = $_sdHuffDecodeWidthSelection (value not permitted)");
+    }
     if (_isHuffmanEncoded) {
-      if (_sdTemplate != 0) { Logger.info("sdTemplate = $_sdTemplate (should be 0)"); _sdTemplate = 0; }
+      if (_sdTemplate != 0) {
+        Logger.info("sdTemplate = $_sdTemplate (should be 0)");
+        _sdTemplate = 0;
+      }
       if (!_useRefinementAggregation) {
-        if (_isCodingContextRetained) { Logger.info("isCodingContextRetained = $_isCodingContextRetained (should be 0)"); _isCodingContextRetained = false; }
-        if (_isCodingContextUsed) { Logger.info("isCodingContextUsed = $_isCodingContextUsed (should be 0)"); _isCodingContextUsed = false; }
+        if (_isCodingContextRetained) {
+          Logger.info(
+              "isCodingContextRetained = $_isCodingContextRetained (should be 0)");
+          _isCodingContextRetained = false;
+        }
+        if (_isCodingContextUsed) {
+          Logger.info(
+              "isCodingContextUsed = $_isCodingContextUsed (should be 0)");
+          _isCodingContextUsed = false;
+        }
       }
     } else {
-      if (_sdHuffBMSizeSelection != 0) { Logger.info("sdHuffBMSizeSelection should be 0"); _sdHuffBMSizeSelection = 0; }
-      if (_sdHuffDecodeWidthSelection != 0) { Logger.info("sdHuffDecodeWidthSelection should be 0"); _sdHuffDecodeWidthSelection = 0; }
-      if (_sdHuffDecodeHeightSelection != 0) { Logger.info("sdHuffDecodeHeightSelection should be 0"); _sdHuffDecodeHeightSelection = 0; }
+      if (_sdHuffBMSizeSelection != 0) {
+        Logger.info("sdHuffBMSizeSelection should be 0");
+        _sdHuffBMSizeSelection = 0;
+      }
+      if (_sdHuffDecodeWidthSelection != 0) {
+        Logger.info("sdHuffDecodeWidthSelection should be 0");
+        _sdHuffDecodeWidthSelection = 0;
+      }
+      if (_sdHuffDecodeHeightSelection != 0) {
+        Logger.info("sdHuffDecodeHeightSelection should be 0");
+        _sdHuffDecodeHeightSelection = 0;
+      }
     }
     if (!_useRefinementAggregation) {
-      if (_sdrTemplate != 0) { Logger.info("sdrTemplate = $_sdrTemplate (should be 0)"); _sdrTemplate = 0; }
+      if (_sdrTemplate != 0) {
+        Logger.info("sdrTemplate = $_sdrTemplate (should be 0)");
+        _sdrTemplate = 0;
+      }
     }
     if (!_isHuffmanEncoded || !_useRefinementAggregation) {
-      if (_sdHuffAggInstanceSelection != 0) { Logger.info("sdHuffAggInstanceSelection = $_sdHuffAggInstanceSelection (should be 0)"); _sdHuffAggInstanceSelection = 0; }
+      if (_sdHuffAggInstanceSelection != 0) {
+        Logger.info(
+            "sdHuffAggInstanceSelection = $_sdHuffAggInstanceSelection (should be 0)");
+        _sdHuffAggInstanceSelection = 0;
+      }
     }
   }
 
@@ -241,7 +275,8 @@ class SymbolDictionary implements Dictionary {
 
           if (!_isHuffmanEncoded || _useRefinementAggregation) {
             if (!_useRefinementAggregation) {
-              _decodeDirectlyThroughGenericRegion(symbolWidth, heightClassHeight);
+              _decodeDirectlyThroughGenericRegion(
+                  symbolWidth, heightClassHeight);
             } else {
               _decodeAggregate(symbolWidth, heightClassHeight);
             }
@@ -261,12 +296,19 @@ class SymbolDictionary implements Dictionary {
             bmSize = _huffDecodeBmSize();
           }
           _subInputStream!.skipBits();
-          final Bitmap heightClassCollectiveBitmap = _decodeHeightClassCollectiveBitmap(bmSize, heightClassHeight, totalWidth);
+          final Bitmap heightClassCollectiveBitmap =
+              _decodeHeightClassCollectiveBitmap(
+                  bmSize, heightClassHeight, totalWidth);
           if (bmSize != 0) {
-            _subInputStream!.seek(_subInputStream!.getStreamPosition() + bmSize);
+            _subInputStream!
+                .seek(_subInputStream!.getStreamPosition() + bmSize);
           }
           _subInputStream!.skipBits();
-          _decodeHeightClassBitmap(heightClassCollectiveBitmap, heightClassFirstSymbolIndex, heightClassHeight, newSymbolsWidths!);
+          _decodeHeightClassBitmap(
+              heightClassCollectiveBitmap,
+              heightClassFirstSymbolIndex,
+              heightClassHeight,
+              newSymbolsWidths!);
         }
       }
       final List<int> exFlags = _getToExportFlags();
@@ -276,29 +318,37 @@ class SymbolDictionary implements Dictionary {
   }
 
   void _setCodingStatistics() {
-    if (_cxIADT == null) _cxIADT = CX(512, 1);
-    if (_cxIADH == null) _cxIADH = CX(512, 1);
-    if (_cxIADW == null) _cxIADW = CX(512, 1);
-    if (_cxIAAI == null) _cxIAAI = CX(512, 1);
-    if (_cxIAEX == null) _cxIAEX = CX(512, 1);
+    _cxIADT ??= CX(512, 1);
+    _cxIADH ??= CX(512, 1);
+    _cxIADW ??= CX(512, 1);
+    _cxIAAI ??= CX(512, 1);
+    _cxIAEX ??= CX(512, 1);
     if (_useRefinementAggregation && cxIAID == null) {
       cxIAID = CX(1 << _sbSymCodeLen, 1);
       _cxIARDX = CX(512, 1);
       _cxIARDY = CX(512, 1);
     }
-    if (_cx == null) _cx = CX(65536, 1);
-    if (_arithmeticDecoder == null) _arithmeticDecoder = ArithmeticDecoder(_subInputStream!);
-    if (_integerDecoder == null) _integerDecoder = ArithmeticIntegerDecoder(_arithmeticDecoder!);
+    _cx ??= CX(65536, 1);
+    _arithmeticDecoder ??= ArithmeticDecoder(_subInputStream!);
+    _integerDecoder ??= ArithmeticIntegerDecoder(_arithmeticDecoder!);
   }
 
-  void _decodeHeightClassBitmap(final Bitmap heightClassCollectiveBitmap, final int heightClassFirstSymbol, final int heightClassHeight, final List<int> newSymbolsWidths) {
-    for (int i = heightClassFirstSymbol; i < _amountOfDecodedSymbols && i < _amountOfNewSymbols; i++) {
+  void _decodeHeightClassBitmap(
+      final Bitmap heightClassCollectiveBitmap,
+      final int heightClassFirstSymbol,
+      final int heightClassHeight,
+      final List<int> newSymbolsWidths) {
+    for (int i = heightClassFirstSymbol;
+        i < _amountOfDecodedSymbols && i < _amountOfNewSymbols;
+        i++) {
       int startColumn = 0;
       for (int j = heightClassFirstSymbol; j <= i - 1; j++) {
         startColumn += newSymbolsWidths[j];
       }
-      final Rectangle roi = Rectangle(startColumn, 0, newSymbolsWidths[i], heightClassHeight);
-      final Bitmap symbolBitmap = Bitmaps.extract(roi, heightClassCollectiveBitmap);
+      final Rectangle roi =
+          Rectangle(startColumn, 0, newSymbolsWidths[i], heightClassHeight);
+      final Bitmap symbolBitmap =
+          Bitmaps.extract(roi, heightClassCollectiveBitmap);
       _newSymbols[i] = symbolBitmap;
       _sbSymbols.add(symbolBitmap);
     }
@@ -309,11 +359,13 @@ class SymbolDictionary implements Dictionary {
     if (_isHuffmanEncoded) {
       amountOfRefinementAggregationInstances = _huffDecodeRefAggNInst();
     } else {
-      amountOfRefinementAggregationInstances = _integerDecoder!.decode(_cxIAAI!);
+      amountOfRefinementAggregationInstances =
+          _integerDecoder!.decode(_cxIAAI!);
     }
 
     if (amountOfRefinementAggregationInstances > 1) {
-      _decodeThroughTextRegion(symbolWidth, heightClassHeight, amountOfRefinementAggregationInstances);
+      _decodeThroughTextRegion(symbolWidth, heightClassHeight,
+          amountOfRefinementAggregationInstances);
     } else if (amountOfRefinementAggregationInstances == 1) {
       _decodeRefinedSymbol(symbolWidth, heightClassHeight);
     }
@@ -335,19 +387,49 @@ class SymbolDictionary implements Dictionary {
     return 0;
   }
 
-  void _decodeThroughTextRegion(final int symbolWidth, final int heightClassHeight, final int amountOfRefinementAggregationInstances) {
+  void _decodeThroughTextRegion(
+      final int symbolWidth,
+      final int heightClassHeight,
+      final int amountOfRefinementAggregationInstances) {
     if (_textRegion == null) {
       _textRegion = TextRegion(_subInputStream, null);
-      _textRegion!.setContexts(_cx!, CX(512, 1), CX(512, 1), CX(512, 1), CX(512, 1), cxIAID!, CX(512, 1), CX(512, 1), CX(512, 1), CX(512, 1));
+      _textRegion!.setContexts(_cx!, CX(512, 1), CX(512, 1), CX(512, 1),
+          CX(512, 1), cxIAID!, CX(512, 1), CX(512, 1), CX(512, 1), CX(512, 1));
     }
     _setSymbolsArray();
-    _textRegion!.setParameters(_arithmeticDecoder!, _integerDecoder!, _isHuffmanEncoded, true, symbolWidth, heightClassHeight,
-        amountOfRefinementAggregationInstances, 1, (_amountOfImportedSymbols + _amountOfDecodedSymbols), 0,
-        0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, _sdrTemplate, _sdrATX!, _sdrATY!, _sbSymbols, _sbSymCodeLen);
+    _textRegion!.setParameters(
+        _arithmeticDecoder!,
+        _integerDecoder!,
+        _isHuffmanEncoded,
+        true,
+        symbolWidth,
+        heightClassHeight,
+        amountOfRefinementAggregationInstances,
+        1,
+        (_amountOfImportedSymbols + _amountOfDecodedSymbols),
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        _sdrTemplate,
+        _sdrATX!,
+        _sdrATY!,
+        _sbSymbols,
+        _sbSymCodeLen);
     _addSymbol(_textRegion!);
   }
 
-  void _decodeRefinedSymbol(final int symbolWidth, final int heightClassHeight) {
+  void _decodeRefinedSymbol(
+      final int symbolWidth, final int heightClassHeight) {
     final int id;
     final int rdx;
     final int rdy;
@@ -370,21 +452,33 @@ class SymbolDictionary implements Dictionary {
     }
   }
 
-  void _decodeNewSymbols(final int symWidth, final int hcHeight, final Bitmap ibo, final int rdx, final int rdy) {
+  void _decodeNewSymbols(final int symWidth, final int hcHeight,
+      final Bitmap ibo, final int rdx, final int rdy) {
     if (_genericRefinementRegion == null) {
       _genericRefinementRegion = GenericRefinementRegion(_subInputStream!);
-      if (_arithmeticDecoder == null) _arithmeticDecoder = ArithmeticDecoder(_subInputStream!);
-      if (_cx == null) _cx = CX(65536, 1);
+      _arithmeticDecoder ??= ArithmeticDecoder(_subInputStream!);
+      _cx ??= CX(65536, 1);
     }
-    _genericRefinementRegion!.setParameters(_cx, _arithmeticDecoder, _sdrTemplate, symWidth, hcHeight, ibo, rdx, rdy, false, _sdrATX!, _sdrATY!);
+    _genericRefinementRegion!.setParameters(
+        _cx,
+        _arithmeticDecoder,
+        _sdrTemplate,
+        symWidth,
+        hcHeight,
+        ibo,
+        rdx,
+        rdy,
+        false,
+        _sdrATX!,
+        _sdrATY!);
     _addSymbol(_genericRefinementRegion!);
   }
 
-  void _decodeDirectlyThroughGenericRegion(final int symWidth, final int hcHeight) {
-    if (_genericRegion == null) {
-      _genericRegion = GenericRegion(_subInputStream!);
-    }
-    _genericRegion!.setParameters(false, _sdTemplate, false, false, _sdATX!, _sdATY!, symWidth, hcHeight, _cx, _arithmeticDecoder);
+  void _decodeDirectlyThroughGenericRegion(
+      final int symWidth, final int hcHeight) {
+    _genericRegion ??= GenericRegion(_subInputStream!);
+    _genericRegion!.setParameters(false, _sdTemplate, false, false, _sdATX!,
+        _sdATY!, symWidth, hcHeight, _cx, _arithmeticDecoder);
     _addSymbol(_genericRegion!);
   }
 
@@ -397,8 +491,10 @@ class SymbolDictionary implements Dictionary {
   int _decodeDifferenceWidth() {
     if (_isHuffmanEncoded) {
       switch (_sdHuffDecodeWidthSelection) {
-        case 0: return StandardTables.getTable(2).decode(_subInputStream!);
-        case 1: return StandardTables.getTable(3).decode(_subInputStream!);
+        case 0:
+          return StandardTables.getTable(2).decode(_subInputStream!);
+        case 1:
+          return StandardTables.getTable(3).decode(_subInputStream!);
         case 3:
           if (_dwTable == null) {
             int dwNr = 0;
@@ -423,25 +519,39 @@ class SymbolDictionary implements Dictionary {
 
   int _decodeHeightClassDeltaHeightWithHuffman() {
     switch (_sdHuffDecodeHeightSelection) {
-      case 0: return StandardTables.getTable(4).decode(_subInputStream!);
-      case 1: return StandardTables.getTable(5).decode(_subInputStream!);
+      case 0:
+        return StandardTables.getTable(4).decode(_subInputStream!);
+      case 1:
+        return StandardTables.getTable(5).decode(_subInputStream!);
       case 3:
-        if (_dhTable == null) _dhTable = _getUserTable(0);
+        _dhTable ??= _getUserTable(0);
         return _dhTable!.decode(_subInputStream!);
     }
     return 0;
   }
 
-  Bitmap _decodeHeightClassCollectiveBitmap(final int bmSize, final int heightClassHeight, final int totalWidth) {
+  Bitmap _decodeHeightClassCollectiveBitmap(
+      final int bmSize, final int heightClassHeight, final int totalWidth) {
     if (bmSize == 0) {
-      final Bitmap heightClassCollectiveBitmap = Bitmap(totalWidth, heightClassHeight);
-      for (int i = 0; i < heightClassCollectiveBitmap.getByteArray().length; i++) {
+      final Bitmap heightClassCollectiveBitmap =
+          Bitmap(totalWidth, heightClassHeight);
+      for (int i = 0;
+          i < heightClassCollectiveBitmap.getByteArray().length;
+          i++) {
         heightClassCollectiveBitmap.setByte(i, _subInputStream!.read());
       }
       return heightClassCollectiveBitmap;
     } else {
-      if (_genericRegion == null) _genericRegion = GenericRegion(_subInputStream!);
-      _genericRegion!.setParametersForPattern(true, _subInputStream!.getStreamPosition(), bmSize, heightClassHeight, totalWidth, 0, false, false, [], []);
+      _genericRegion ??= GenericRegion(_subInputStream!);
+      _genericRegion!.setParametersForPattern(
+          true,
+          _subInputStream!.getStreamPosition(),
+          bmSize,
+          heightClassHeight,
+          totalWidth,
+          0,
+          false,
+          false, [], []);
       return _genericRegion!.getRegionBitmap();
     }
   }
@@ -462,15 +572,20 @@ class SymbolDictionary implements Dictionary {
   List<int> _getToExportFlags() {
     int currentExportFlag = 0;
     int exRunLength = 0;
-    final List<int> exportFlags = List.filled(_amountOfImportedSymbols + _amountOfNewSymbols, 0);
-    for (int exportIndex = 0; exportIndex < _amountOfImportedSymbols + _amountOfNewSymbols; exportIndex += exRunLength) {
+    final List<int> exportFlags =
+        List.filled(_amountOfImportedSymbols + _amountOfNewSymbols, 0);
+    for (int exportIndex = 0;
+        exportIndex < _amountOfImportedSymbols + _amountOfNewSymbols;
+        exportIndex += exRunLength) {
       if (_isHuffmanEncoded) {
         exRunLength = StandardTables.getTable(1).decode(_subInputStream!);
       } else {
         exRunLength = _integerDecoder!.decode(_cxIAEX!);
       }
       if (exRunLength != 0) {
-        for (int index = exportIndex; index < exportIndex + exRunLength; index++) {
+        for (int index = exportIndex;
+            index < exportIndex + exRunLength;
+            index++) {
           if (index < exportFlags.length) {
             exportFlags[index] = currentExportFlag;
           }
@@ -493,9 +608,12 @@ class SymbolDictionary implements Dictionary {
 
   int _getSbSymCodeLen() {
     if (_isHuffmanEncoded) {
-      return max((log(_amountOfImportedSymbols + _amountOfNewSymbols) / log(2)).ceil(), 1);
+      return max(
+          (log(_amountOfImportedSymbols + _amountOfNewSymbols) / log(2)).ceil(),
+          1);
     } else {
-      return (log(_amountOfImportedSymbols + _amountOfNewSymbols) / log(2)).ceil();
+      return (log(_amountOfImportedSymbols + _amountOfNewSymbols) / log(2))
+          .ceil();
     }
   }
 
@@ -510,9 +628,11 @@ class SymbolDictionary implements Dictionary {
 
   void _retrieveImportSymbols() {
     _importSymbols = [];
-    for (final SegmentHeader referredToSegmentHeader in _segmentHeader!.rtSegments) {
+    for (final SegmentHeader referredToSegmentHeader
+        in _segmentHeader!.rtSegments) {
       if (referredToSegmentHeader.segmentType == 0) {
-        final SymbolDictionary sd = referredToSegmentHeader.getSegmentData() as SymbolDictionary;
+        final SymbolDictionary sd =
+            referredToSegmentHeader.getSegmentData() as SymbolDictionary;
         _importSymbols.addAll(sd.getDictionary());
         _amountOfImportedSymbols += sd._amountOfExportSymbols;
       }
@@ -521,7 +641,8 @@ class SymbolDictionary implements Dictionary {
 
   HuffmanTable? _getUserTable(final int tablePosition) {
     int tableCounter = 0;
-    for (final SegmentHeader referredToSegmentHeader in _segmentHeader!.rtSegments) {
+    for (final SegmentHeader referredToSegmentHeader
+        in _segmentHeader!.rtSegments) {
       if (referredToSegmentHeader.segmentType == 53) {
         if (tableCounter == tablePosition) {
           final Table t = referredToSegmentHeader.getSegmentData() as Table;

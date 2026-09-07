@@ -130,7 +130,8 @@ class TextRegion implements Region {
       _sbdsOffset -= 0x20;
     }
     _defaultPixel = _subInputStream!.readBit();
-    _combinationOperator = CombinationOperator.translateOperatorCodeToEnum(_subInputStream!.readBits(2) & 0x3);
+    _combinationOperator = CombinationOperator.translateOperatorCodeToEnum(
+        _subInputStream!.readBits(2) & 0x3);
     _isTransposed = _subInputStream!.readBit();
     _referenceCorner = _subInputStream!.readBits(2) & 0x3;
     _logSBStrips = _subInputStream!.readBits(2) & 0x3;
@@ -179,7 +180,8 @@ class TextRegion implements Region {
   void _initSymbols() {
     for (final SegmentHeader segment in _segmentHeader!.rtSegments) {
       if (segment.segmentType == 0) {
-        final SymbolDictionary sd = segment.getSegmentData() as SymbolDictionary;
+        final SymbolDictionary sd =
+            segment.getSegmentData() as SymbolDictionary;
         sd.cxIAID = _cxIAID;
         _symbols.addAll(sd.getDictionary());
       }
@@ -203,13 +205,13 @@ class TextRegion implements Region {
         runCodeTable.add(Code(prefLen, 0, i, false));
       }
     }
-    
+
     HuffmanTable ht = FixedSizeTable(runCodeTable);
-    
+
     int previousCodeLength = 0;
     int counter = 0;
     final List<Code> sbSymCodes = [];
-    
+
     while (counter < _amountOfSymbols) {
       final int code = ht.decode(_subInputStream!);
       if (code < 32) {
@@ -231,7 +233,7 @@ class TextRegion implements Region {
         } else if (code == 34) {
           runLength = 11 + _subInputStream!.readBits(7);
         }
-        
+
         for (int j = 0; j < runLength; j++) {
           if (currCodeLength > 0) {
             sbSymCodes.add(Code(currCodeLength, 0, counter, false));
@@ -251,15 +253,35 @@ class TextRegion implements Region {
         _sbrTemplate = 0;
       }
     }
-    if (_sbHuffFS == 2 || _sbHuffRDWidth == 2 || _sbHuffRDHeight == 2 || _sbHuffRDX == 2 || _sbHuffRDY == 2) {
-      throw Exception("Huffman flag value of text region segment is not permitted");
+    if (_sbHuffFS == 2 ||
+        _sbHuffRDWidth == 2 ||
+        _sbHuffRDHeight == 2 ||
+        _sbHuffRDX == 2 ||
+        _sbHuffRDY == 2) {
+      throw Exception(
+          "Huffman flag value of text region segment is not permitted");
     }
     if (!_useRefinement) {
-      if (_sbHuffRSize != 0) { Logger.info("sbHuffRSize should be 0"); _sbHuffRSize = 0; }
-      if (_sbHuffRDY != 0) { Logger.info("sbHuffRDY should be 0"); _sbHuffRDY = 0; }
-      if (_sbHuffRDX != 0) { Logger.info("sbHuffRDX should be 0"); _sbHuffRDX = 0; }
-      if (_sbHuffRDWidth != 0) { Logger.info("sbHuffRDWidth should be 0"); _sbHuffRDWidth = 0; }
-      if (_sbHuffRDHeight != 0) { Logger.info("sbHuffRDHeight should be 0"); _sbHuffRDHeight = 0; }
+      if (_sbHuffRSize != 0) {
+        Logger.info("sbHuffRSize should be 0");
+        _sbHuffRSize = 0;
+      }
+      if (_sbHuffRDY != 0) {
+        Logger.info("sbHuffRDY should be 0");
+        _sbHuffRDY = 0;
+      }
+      if (_sbHuffRDX != 0) {
+        Logger.info("sbHuffRDX should be 0");
+        _sbHuffRDX = 0;
+      }
+      if (_sbHuffRDWidth != 0) {
+        Logger.info("sbHuffRDWidth should be 0");
+        _sbHuffRDWidth = 0;
+      }
+      if (_sbHuffRDHeight != 0) {
+        Logger.info("sbHuffRDHeight should be 0");
+        _sbHuffRDHeight = 0;
+      }
     }
   }
 
@@ -279,19 +301,19 @@ class TextRegion implements Region {
   }
 
   void _setCodingStatistics() {
-    if (_cxIADT == null) _cxIADT = CX(512, 1);
-    if (_cxIAFS == null) _cxIAFS = CX(512, 1);
-    if (_cxIADS == null) _cxIADS = CX(512, 1);
-    if (_cxIAIT == null) _cxIAIT = CX(512, 1);
-    if (_cxIARI == null) _cxIARI = CX(512, 1);
-    if (_cxIARDW == null) _cxIARDW = CX(512, 1);
-    if (_cxIARDH == null) _cxIARDH = CX(512, 1);
-    if (_cxIAID == null) _cxIAID = CX(1 << _symbolCodeLength, 1);
-    if (_cxIARDX == null) _cxIARDX = CX(512, 1);
-    if (_cxIARDY == null) _cxIARDY = CX(512, 1);
+    _cxIADT ??= CX(512, 1);
+    _cxIAFS ??= CX(512, 1);
+    _cxIADS ??= CX(512, 1);
+    _cxIAIT ??= CX(512, 1);
+    _cxIARI ??= CX(512, 1);
+    _cxIARDW ??= CX(512, 1);
+    _cxIARDH ??= CX(512, 1);
+    _cxIAID ??= CX(1 << _symbolCodeLength, 1);
+    _cxIARDX ??= CX(512, 1);
+    _cxIARDY ??= CX(512, 1);
 
-    if (_arithmeticDecoder == null) _arithmeticDecoder = ArithmeticDecoder(_subInputStream!);
-    if (_integerDecoder == null) _integerDecoder = ArithmeticIntegerDecoder(_arithmeticDecoder!);
+    _arithmeticDecoder ??= ArithmeticDecoder(_subInputStream!);
+    _integerDecoder ??= ArithmeticIntegerDecoder(_arithmeticDecoder!);
   }
 
   void _createRegionBitmap() {
@@ -303,8 +325,8 @@ class TextRegion implements Region {
       // _regionBitmap!.getByteArray().fillRange(0, _regionBitmap!.getByteArray().length, 0xff);
       // Dart Uint8List doesn't have fillRange with value for all?
       // It does.
-      for(int i=0; i<_regionBitmap!.getByteArray().length; i++) {
-          _regionBitmap!.getByteArray()[i] = 0xff;
+      for (int i = 0; i < _regionBitmap!.getByteArray().length; i++) {
+        _regionBitmap!.getByteArray()[i] = 0xff;
       }
     }
   }
@@ -318,7 +340,7 @@ class TextRegion implements Region {
     while (instanceCounter < _amountOfSymbolInstances) {
       final int dT = _decodeDT();
       stripT += dT;
-      
+
       bool first = true;
       _currentS = 0;
 
@@ -330,8 +352,10 @@ class TextRegion implements Region {
           first = false;
         } else {
           final int idS = _decodeIdS();
-          if (idS == 0x7fffffffffffffff) // Long.MAX_VALUE check? Dart int is 64-bit.
-             break; // How to represent OOB?
+          if (idS == 0x7fffffffffffffff) {
+            // Long.MAX_VALUE check? Dart int is 64-bit.
+            break; // How to represent OOB?
+          }
           // In Java code: if (idS == Long.MAX_VALUE) break;
           // I need to check what decodeIdS returns for OOB.
           // But wait, decodeIdS calls integerDecoder.decode(cxIADS) or Huffman table decode.
@@ -339,9 +363,9 @@ class TextRegion implements Region {
           // In Java, StandardTables returns Long.MAX_VALUE for OOB?
           // I need to check StandardTables implementation or assume it returns a large value.
           // Let's assume I need to handle it.
-          
+
           // Actually, let's look at _decodeIdS implementation.
-          
+
           _currentS += (idS + _sbdsOffset);
         }
 
@@ -371,7 +395,8 @@ class TextRegion implements Region {
         }
         stripT = _table!.decode(_subInputStream!);
       } else {
-        stripT = StandardTables.getTable(11 + _sbHuffDT).decode(_subInputStream!);
+        stripT =
+            StandardTables.getTable(11 + _sbHuffDT).decode(_subInputStream!);
       }
     } else {
       stripT = _integerDecoder!.decode(_cxIADT!);
@@ -396,9 +421,7 @@ class TextRegion implements Region {
   int _decodeDfS() {
     if (_isHuffmanEncoded) {
       if (_sbHuffFS == 3) {
-        if (_fsTable == null) {
-          _fsTable = _getUserTable(0);
-        }
+        _fsTable ??= _getUserTable(0);
         return _fsTable!.decode(_subInputStream!);
       } else {
         return StandardTables.getTable(6 + _sbHuffFS).decode(_subInputStream!);
@@ -480,12 +503,20 @@ class TextRegion implements Region {
       final int genericRegionReferenceDX = (rdw >> 1) + rdx;
       final int genericRegionReferenceDY = (rdh >> 1) + rdy;
 
-      if (_genericRefinementRegion == null) {
-        _genericRefinementRegion = GenericRefinementRegion(_subInputStream!);
-      }
+      _genericRefinementRegion ??= GenericRefinementRegion(_subInputStream!);
 
-      _genericRefinementRegion!.setParameters(_cx, _arithmeticDecoder, _sbrTemplate, (wo + rdw), (ho + rdh),
-          ibo, genericRegionReferenceDX, genericRegionReferenceDY, false, _sbrATX!, _sbrATY!);
+      _genericRefinementRegion!.setParameters(
+          _cx,
+          _arithmeticDecoder,
+          _sbrTemplate,
+          (wo + rdw),
+          (ho + rdh),
+          ibo,
+          genericRegionReferenceDX,
+          genericRegionReferenceDY,
+          false,
+          _sbrATX!,
+          _sbrATY!);
 
       ib = _genericRefinementRegion!.getRegionBitmap();
 
@@ -508,7 +539,8 @@ class TextRegion implements Region {
         }
         return _rdwTable!.decode(_subInputStream!);
       } else {
-        return StandardTables.getTable(14 + _sbHuffRDWidth).decode(_subInputStream!);
+        return StandardTables.getTable(14 + _sbHuffRDWidth)
+            .decode(_subInputStream!);
       }
     } else {
       return _integerDecoder!.decode(_cxIARDW!);
@@ -528,7 +560,8 @@ class TextRegion implements Region {
         }
         return _rdhTable!.decode(_subInputStream!);
       } else {
-        return StandardTables.getTable(14 + _sbHuffRDHeight).decode(_subInputStream!);
+        return StandardTables.getTable(14 + _sbHuffRDHeight)
+            .decode(_subInputStream!);
       }
     } else {
       return _integerDecoder!.decode(_cxIARDH!);
@@ -549,7 +582,8 @@ class TextRegion implements Region {
         }
         return _rdxTable!.decode(_subInputStream!);
       } else {
-        return StandardTables.getTable(14 + _sbHuffRDX).decode(_subInputStream!);
+        return StandardTables.getTable(14 + _sbHuffRDX)
+            .decode(_subInputStream!);
       }
     } else {
       return _integerDecoder!.decode(_cxIARDX!);
@@ -571,7 +605,8 @@ class TextRegion implements Region {
         }
         return _rdyTable!.decode(_subInputStream!);
       } else {
-        return StandardTables.getTable(14 + _sbHuffRDY).decode(_subInputStream!);
+        return StandardTables.getTable(14 + _sbHuffRDY)
+            .decode(_subInputStream!);
       }
     } else {
       return _integerDecoder!.decode(_cxIARDY!);
@@ -598,9 +633,11 @@ class TextRegion implements Region {
   }
 
   void _blit(Bitmap ib, int t) {
-    if (_isTransposed == 0 && (_referenceCorner == 2 || _referenceCorner == 3)) {
+    if (_isTransposed == 0 &&
+        (_referenceCorner == 2 || _referenceCorner == 3)) {
       _currentS += ib.width - 1;
-    } else if (_isTransposed == 1 && (_referenceCorner == 0 || _referenceCorner == 2)) {
+    } else if (_isTransposed == 1 &&
+        (_referenceCorner == 0 || _referenceCorner == 2)) {
       _currentS += ib.height - 1;
     }
 
@@ -628,18 +665,21 @@ class TextRegion implements Region {
 
     Bitmaps.blit(ib, _regionBitmap!, s, t, _combinationOperator);
 
-    if (_isTransposed == 0 && (_referenceCorner == 0 || _referenceCorner == 1)) {
+    if (_isTransposed == 0 &&
+        (_referenceCorner == 0 || _referenceCorner == 1)) {
       _currentS += ib.width - 1;
     }
 
-    if (_isTransposed == 1 && (_referenceCorner == 1 || _referenceCorner == 3)) {
+    if (_isTransposed == 1 &&
+        (_referenceCorner == 1 || _referenceCorner == 3)) {
       _currentS += ib.height - 1;
     }
   }
 
   HuffmanTable? _getUserTable(final int tablePosition) {
     int tableCounter = 0;
-    for (final SegmentHeader referredToSegmentHeader in _segmentHeader!.rtSegments) {
+    for (final SegmentHeader referredToSegmentHeader
+        in _segmentHeader!.rtSegments) {
       if (referredToSegmentHeader.segmentType == 53) {
         if (tableCounter == tablePosition) {
           final Table t = referredToSegmentHeader.getSegmentData() as Table;
@@ -652,8 +692,8 @@ class TextRegion implements Region {
     return null;
   }
 
-  void setContexts(CX cx, CX cxIADT, CX cxIAFS, CX cxIADS, CX cxIAIT, CX cxIAID, CX cxIARDW, CX cxIARDH,
-      CX cxIARDX, CX cxIARDY) {
+  void setContexts(CX cx, CX cxIADT, CX cxIAFS, CX cxIADS, CX cxIAIT, CX cxIAID,
+      CX cxIARDW, CX cxIARDH, CX cxIARDX, CX cxIARDY) {
     _cx = cx;
     _cxIADT = cxIADT;
     _cxIAFS = cxIAFS;
@@ -666,13 +706,34 @@ class TextRegion implements Region {
     _cxIARDY = cxIARDY;
   }
 
-  void setParameters(ArithmeticDecoder arithmeticDecoder, ArithmeticIntegerDecoder iDecoder,
-      bool isHuffmanEncoded, bool sbRefine, int sbw, int sbh, int sbNumInstances, int sbStrips, int sbNumSyms,
-      int sbDefaultPixel, int sbCombinationOperator, int transposed, int refCorner, int sbdsOffset,
-      int sbHuffFS, int sbHuffDS, int sbHuffDT, int sbHuffRDWidth, int sbHuffRDHeight, int sbHuffRDX,
-      int sbHuffRDY, int sbHuffRSize, int sbrTemplate, List<int> sbrATX, List<int> sbrATY, List<Bitmap> sbSyms,
+  void setParameters(
+      ArithmeticDecoder arithmeticDecoder,
+      ArithmeticIntegerDecoder iDecoder,
+      bool isHuffmanEncoded,
+      bool sbRefine,
+      int sbw,
+      int sbh,
+      int sbNumInstances,
+      int sbStrips,
+      int sbNumSyms,
+      int sbDefaultPixel,
+      int sbCombinationOperator,
+      int transposed,
+      int refCorner,
+      int sbdsOffset,
+      int sbHuffFS,
+      int sbHuffDS,
+      int sbHuffDT,
+      int sbHuffRDWidth,
+      int sbHuffRDHeight,
+      int sbHuffRDX,
+      int sbHuffRDY,
+      int sbHuffRSize,
+      int sbrTemplate,
+      List<int> sbrATX,
+      List<int> sbrATY,
+      List<Bitmap> sbSyms,
       int sbSymCodeLen) {
-
     _arithmeticDecoder = arithmeticDecoder;
     _integerDecoder = iDecoder;
     _isHuffmanEncoded = isHuffmanEncoded;
@@ -685,7 +746,8 @@ class TextRegion implements Region {
     _sbStrips = sbStrips;
     _amountOfSymbols = sbNumSyms;
     _defaultPixel = sbDefaultPixel;
-    _combinationOperator = CombinationOperator.translateOperatorCodeToEnum(sbCombinationOperator);
+    _combinationOperator =
+        CombinationOperator.translateOperatorCodeToEnum(sbCombinationOperator);
     _isTransposed = transposed;
     _referenceCorner = refCorner;
     _sbdsOffset = sbdsOffset;

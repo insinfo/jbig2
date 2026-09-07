@@ -12,20 +12,24 @@ void main() {
     });
 
     test('AND', () {
-      expect(Bitmaps.combineBytes(value1, value2, CombinationOperator.AND), 0x8);
+      expect(
+          Bitmaps.combineBytes(value1, value2, CombinationOperator.AND), 0x8);
     });
 
     test('XOR', () {
-      expect(Bitmaps.combineBytes(value1, value2, CombinationOperator.XOR), 0x7);
+      expect(
+          Bitmaps.combineBytes(value1, value2, CombinationOperator.XOR), 0x7);
     });
 
     test('XNOR', () {
       // Java expects -8, which is 0xF8 in unsigned byte
-      expect(Bitmaps.combineBytes(value1, value2, CombinationOperator.XNOR), 0xF8);
+      expect(
+          Bitmaps.combineBytes(value1, value2, CombinationOperator.XNOR), 0xF8);
     });
 
     test('REPLACE', () {
-      expect(Bitmaps.combineBytes(value1, value2, CombinationOperator.REPLACE), value2);
+      expect(Bitmaps.combineBytes(value1, value2, CombinationOperator.REPLACE),
+          value2);
     });
   });
 }

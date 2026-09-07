@@ -17,13 +17,14 @@ class SequenceRandomAccessRead extends RandomAccessRead {
           _readerList.add(reader);
         }
       } on IOException catch (e) {
-  throw ArgumentError('Problematic reader list: $e');
+        throw ArgumentError('Problematic reader list: $e');
       }
     }
     if (_readerList.isEmpty) {
-      throw ArgumentError('Input list must contain at least one non-empty reader');
+      throw ArgumentError(
+          'Input list must contain at least one non-empty reader');
     }
-  _numberOfReaders = _readerList.length;
+    _numberOfReaders = _readerList.length;
     _startPositions = List<int>.filled(_numberOfReaders, 0);
     _endPositions = List<int>.filled(_numberOfReaders, -1);
 
@@ -107,7 +108,8 @@ class SequenceRandomAccessRead extends RandomAccessRead {
     var targetOffset = offset;
     while (totalRead < maxAvailable) {
       final reader = _ensureCurrentReader();
-      final readNow = reader.readBuffer(buffer, targetOffset, maxAvailable - totalRead);
+      final readNow =
+          reader.readBuffer(buffer, targetOffset, maxAvailable - totalRead);
       if (readNow <= 0) {
         if (_currentIndex >= _numberOfReaders - 1) {
           break;
@@ -182,7 +184,8 @@ class SequenceRandomAccessRead extends RandomAccessRead {
 
   @override
   RandomAccessReadView createView(int startPosition, int streamLength) {
-    throw UnsupportedError('${runtimeType.toString()}.createView is not supported.');
+    throw UnsupportedError(
+        '${runtimeType.toString()}.createView is not supported.');
   }
 
   RandomAccessRead _ensureCurrentReader() {

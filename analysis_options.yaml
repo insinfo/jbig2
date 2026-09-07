@@ -1,0 +1,9 @@
+include: package:lints/recommended.yaml
+
+linter:
+  rules:
+    # The ported decoder keeps the field and constant names of the JBIG2
+    # specification and of the Java original, so a reader can check it against
+    # either. Renaming them would hide that correspondence.
+    constant_identifier_names: false
+    non_constant_identifier_names: false

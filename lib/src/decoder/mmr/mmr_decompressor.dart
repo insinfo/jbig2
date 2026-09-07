@@ -44,7 +44,8 @@ class MMRDecompressor {
     int count = 0;
 
     for (int line = 0; line < height; line++) {
-      count = uncompress2D(data, referenceOffsets, refRunLength, currentOffsets, width);
+      count = uncompress2D(
+          data, referenceOffsets, refRunLength, currentOffsets, width);
 
       if (count == MMRConstants.EOF) {
         break;
@@ -79,7 +80,8 @@ class MMRDecompressor {
     }
   }
 
-  void fillBitmap(Bitmap result, int line, List<int> currentOffsets, int count) {
+  void fillBitmap(
+      Bitmap result, int line, List<int> currentOffsets, int count) {
     int x = 0;
     int targetByte = result.getByteIndex(0, line);
     int targetByteValue = 0;
@@ -110,7 +112,8 @@ class MMRDecompressor {
     }
   }
 
-  int uncompress2D(RunData runData, List<int> referenceOffsets, int refRunLength, List<int> runOffsets, int width) {
+  int uncompress2D(RunData runData, List<int> referenceOffsets,
+      int refRunLength, List<int> runOffsets, int width) {
     int referenceBufferOffset = 0;
     int currentBufferOffset = 0;
     int currentLineBitPosition = 0;
@@ -119,7 +122,8 @@ class MMRDecompressor {
     Code? code; // Storage var for current code being processed
 
     referenceOffsets[refRunLength] = referenceOffsets[refRunLength + 1] = width;
-    referenceOffsets[refRunLength + 2] = referenceOffsets[refRunLength + 3] = width + 1;
+    referenceOffsets[refRunLength + 2] =
+        referenceOffsets[refRunLength + 3] = width + 1;
 
     try {
       decodeLoop:
@@ -141,16 +145,19 @@ class MMRDecompressor {
             break;
 
           case MMRConstants.CODE_VR1:
-            currentLineBitPosition = referenceOffsets[referenceBufferOffset] + 1;
+            currentLineBitPosition =
+                referenceOffsets[referenceBufferOffset] + 1;
             break;
 
           case MMRConstants.CODE_VL1:
-            currentLineBitPosition = referenceOffsets[referenceBufferOffset] - 1;
+            currentLineBitPosition =
+                referenceOffsets[referenceBufferOffset] - 1;
             break;
 
           case MMRConstants.CODE_H:
             for (int ever = 1; ever > 0;) {
-              code = runData.uncompressGetCode(whiteRun == true ? whiteTable! : blackTable!);
+              code = runData.uncompressGetCode(
+                  whiteRun == true ? whiteTable! : blackTable!);
 
               if (code == null) break decodeLoop;
 
@@ -170,7 +177,8 @@ class MMRDecompressor {
 
             final int firstHalfBitPos = currentLineBitPosition;
             for (int ever1 = 1; ever1 > 0;) {
-              code = runData.uncompressGetCode(whiteRun != true ? whiteTable! : blackTable!);
+              code = runData.uncompressGetCode(
+                  whiteRun != true ? whiteTable! : blackTable!);
               if (code == null) break decodeLoop;
 
               runData.offset += code.bitLength;
@@ -181,7 +189,8 @@ class MMRDecompressor {
                 }
                 currentLineBitPosition += code.runLength;
                 // don't generate 0-length run at EOL for cases where the line ends in an H-run.
-                if (currentLineBitPosition < width || currentLineBitPosition != firstHalfBitPos) {
+                if (currentLineBitPosition < width ||
+                    currentLineBitPosition != firstHalfBitPos) {
                   runOffsets[currentBufferOffset++] = currentLineBitPosition;
                 }
                 break;
@@ -189,7 +198,9 @@ class MMRDecompressor {
               currentLineBitPosition += code.runLength;
             }
 
-            while (currentLineBitPosition < width && referenceOffsets[referenceBufferOffset] <= currentLineBitPosition) {
+            while (currentLineBitPosition < width &&
+                referenceOffsets[referenceBufferOffset] <=
+                    currentLineBitPosition) {
               referenceBufferOffset += 2;
             }
             continue decodeLoop;
@@ -200,19 +211,23 @@ class MMRDecompressor {
             continue decodeLoop;
 
           case MMRConstants.CODE_VR2:
-            currentLineBitPosition = referenceOffsets[referenceBufferOffset] + 2;
+            currentLineBitPosition =
+                referenceOffsets[referenceBufferOffset] + 2;
             break;
 
           case MMRConstants.CODE_VL2:
-            currentLineBitPosition = referenceOffsets[referenceBufferOffset] - 2;
+            currentLineBitPosition =
+                referenceOffsets[referenceBufferOffset] - 2;
             break;
 
           case MMRConstants.CODE_VR3:
-            currentLineBitPosition = referenceOffsets[referenceBufferOffset] + 3;
+            currentLineBitPosition =
+                referenceOffsets[referenceBufferOffset] + 3;
             break;
 
           case MMRConstants.CODE_VL3:
-            currentLineBitPosition = referenceOffsets[referenceBufferOffset] - 3;
+            currentLineBitPosition =
+                referenceOffsets[referenceBufferOffset] - 3;
             break;
 
           case MMRConstants.EOL:
@@ -244,7 +259,9 @@ class MMRDecompressor {
             referenceBufferOffset++;
           }
 
-          while (currentLineBitPosition < width && referenceOffsets[referenceBufferOffset] <= currentLineBitPosition) {
+          while (currentLineBitPosition < width &&
+              referenceOffsets[referenceBufferOffset] <=
+                  currentLineBitPosition) {
             referenceBufferOffset += 2;
           }
         }
@@ -326,11 +343,14 @@ class MMRDecompressor {
       runOffsets[refOffset] = width;
     }
 
-    return code != null && code.runLength != MMRConstants.EOL ? refOffset : MMRConstants.EOL;
+    return code != null && code.runLength != MMRConstants.EOL
+        ? refOffset
+        : MMRConstants.EOL;
   }
 
   static List<Code?> createLittleEndianTable(List<List<int>> codes) {
-    final List<Code?> firstLevelTable = List.filled(FIRST_LEVEL_TABLE_MASK + 1, null);
+    final List<Code?> firstLevelTable =
+        List.filled(FIRST_LEVEL_TABLE_MASK + 1, null);
     for (int i = 0; i < codes.length; i++) {
       final Code code = Code(codes[i]);
 
@@ -344,21 +364,29 @@ class MMRDecompressor {
         }
       } else {
         // init second level table
-        final int firstLevelIndex = code.codeWord >>> (code.bitLength - FIRST_LEVEL_TABLE_SIZE);
+        final int firstLevelIndex =
+            code.codeWord >>> (code.bitLength - FIRST_LEVEL_TABLE_SIZE);
 
         if (firstLevelTable[firstLevelIndex] == null) {
           final Code firstLevelCode = Code([0, 0, 0]); // Dummy
-          firstLevelCode.subTable = List.filled(SECOND_LEVEL_TABLE_MASK + 1, null);
+          firstLevelCode.subTable =
+              List.filled(SECOND_LEVEL_TABLE_MASK + 1, null);
           firstLevelTable[firstLevelIndex] = firstLevelCode;
         }
 
         // fill second level table
-        if (code.bitLength <= FIRST_LEVEL_TABLE_SIZE + SECOND_LEVEL_TABLE_SIZE) {
-          final List<Code?> secondLevelTable = firstLevelTable[firstLevelIndex]!.subTable!;
-          final int variantLength = FIRST_LEVEL_TABLE_SIZE + SECOND_LEVEL_TABLE_SIZE - code.bitLength;
-          final int baseWord = (code.codeWord << variantLength) & SECOND_LEVEL_TABLE_MASK;
+        if (code.bitLength <=
+            FIRST_LEVEL_TABLE_SIZE + SECOND_LEVEL_TABLE_SIZE) {
+          final List<Code?> secondLevelTable =
+              firstLevelTable[firstLevelIndex]!.subTable!;
+          final int variantLength =
+              FIRST_LEVEL_TABLE_SIZE + SECOND_LEVEL_TABLE_SIZE - code.bitLength;
+          final int baseWord =
+              (code.codeWord << variantLength) & SECOND_LEVEL_TABLE_MASK;
 
-          for (int variant = (1 << variantLength) - 1; variant >= 0; variant--) {
+          for (int variant = (1 << variantLength) - 1;
+              variant >= 0;
+              variant--) {
             secondLevelTable[baseWord | variant] = code;
           }
         } else {
@@ -408,11 +436,15 @@ class RunData {
 
   Code? uncompressGetCodeLittleEndian(List<Code?> table) {
     final int code = uncompressGetNextCodeLittleEndian() & 0xffffff;
-    Code? result = table[code >> (CODE_OFFSET - MMRDecompressor.FIRST_LEVEL_TABLE_SIZE)];
+    Code? result =
+        table[code >> (CODE_OFFSET - MMRDecompressor.FIRST_LEVEL_TABLE_SIZE)];
 
     // perform second-level lookup
     if (result != null && result.subTable != null) {
-      result = result.subTable![(code >> (CODE_OFFSET - MMRDecompressor.FIRST_LEVEL_TABLE_SIZE - MMRDecompressor.SECOND_LEVEL_TABLE_SIZE)) &
+      result = result.subTable![(code >>
+              (CODE_OFFSET -
+                  MMRDecompressor.FIRST_LEVEL_TABLE_SIZE -
+                  MMRDecompressor.SECOND_LEVEL_TABLE_SIZE)) &
           MMRDecompressor.SECOND_LEVEL_TABLE_MASK];
     }
 
@@ -427,7 +459,8 @@ class RunData {
       // check whether we can refill, or need to fill in absolute mode
       if (bitsToFill < 0 || bitsToFill > 24) {
         // refill at absolute offset
-        int byteOffset = (offset >> 3) - bufferBase; // offset>>3 is equivalent to offset/8
+        int byteOffset =
+            (offset >> 3) - bufferBase; // offset>>3 is equivalent to offset/8
 
         if (byteOffset >= bufferTop) {
           byteOffset += bufferBase;
@@ -435,7 +468,9 @@ class RunData {
           byteOffset -= bufferBase;
         }
 
-        lastCode = (buffer[byteOffset] & 0xff) << 16 | (buffer[byteOffset + 1] & 0xff) << 8 | (buffer[byteOffset + 2] & 0xff);
+        lastCode = (buffer[byteOffset] & 0xff) << 16 |
+            (buffer[byteOffset + 1] & 0xff) << 8 |
+            (buffer[byteOffset + 2] & 0xff);
 
         int bitOffset = offset & 7; // equivalent to offset%8
         lastCode <<= bitOffset;
@@ -472,7 +507,8 @@ class RunData {
 
       return lastCode;
     } catch (e) {
-      throw RangeError("Corrupted RLE data caused by an IOException while reading raw data: $e");
+      throw RangeError(
+          "Corrupted RLE data caused by an IOException while reading raw data: $e");
     }
   }
 
@@ -502,7 +538,7 @@ class RunData {
         buffer[bufferTop++] = read == -1 ? 0 : (read & 0xff);
       }
     }
-    
+
     // leave some room, in order to save a few tests in the calling code
     bufferTop -= 3;
 
@@ -537,9 +573,12 @@ class Code {
 
   @override
   bool operator ==(Object other) {
-    return (other is Code) && other.bitLength == bitLength && other.codeWord == codeWord && other.runLength == runLength;
+    return (other is Code) &&
+        other.bitLength == bitLength &&
+        other.codeWord == codeWord &&
+        other.runLength == runLength;
   }
-  
+
   @override
   int get hashCode => Object.hash(bitLength, codeWord, runLength);
 }

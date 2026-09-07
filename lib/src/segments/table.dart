@@ -16,7 +16,8 @@ class Table implements SegmentData {
 
     /* Bit 7 */
     if ((bit = _subInputStream.readBit()) == 1) {
-      throw FormatException("B.2.1 Code table flags: Bit 7 must be zero, but was $bit");
+      throw FormatException(
+          "B.2.1 Code table flags: Bit 7 must be zero, but was $bit");
     }
 
     /* Bit 4-6 */

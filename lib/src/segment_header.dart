@@ -145,8 +145,8 @@ class SegmentHeader {
         }
       }
 
-      // rtSegments = List.filled(countOfRTS, SegmentHeader(document, subInputStream, 0, 0)); 
-      rtSegments = [];  
+      // rtSegments = List.filled(countOfRTS, SegmentHeader(document, subInputStream, 0, 0));
+      rtSegments = [];
 
       // print("|-Length of RT segments list: $countOfRTS");
 
@@ -169,13 +169,17 @@ class SegmentHeader {
     }
 
     if (countOfRTS > 0) {
-      final JBIG2Page? page = document.getPage(pageAssociation);
+      // A referred-to segment lives on the associated page when there is one,
+      // and among the global segments otherwise. Resolving the page with `!`
+      // threw here instead of falling back, so the global lookup below was
+      // unreachable for a segment that refers to a globals-only dictionary.
+      final JBIG2Page? page = document.getPageOrNull(pageAssociation);
       for (int i = 0; i < countOfRTS; i++) {
         SegmentHeader? seg = (page != null
             ? page.getSegment(rtsNumbers[i])
             : document.getGlobalSegment(rtsNumbers[i]));
         if (seg != null) {
-            rtSegments.add(seg);
+          rtSegments.add(seg);
         }
       }
     }
@@ -200,8 +204,8 @@ class SegmentHeader {
   }
 
   SubInputStream getDataInputStream() {
-    return SubInputStream(
-        subInputStream.wrappedStream, subInputStream.offset + segmentDataStartOffset, segmentDataLength);
+    return SubInputStream(subInputStream.wrappedStream,
+        subInputStream.offset + segmentDataStartOffset, segmentDataLength);
   }
 
   SegmentData? getSegmentData() {
@@ -232,9 +236,9 @@ class SegmentHeader {
   void cleanSegmentData() {
     _segmentData = null;
   }
-  
+
   @override
   String toString() {
-      return "SegmentNr: $segmentNr, Type: $segmentType, Page: $pageAssociation";
+    return "SegmentNr: $segmentNr, Type: $segmentType, Page: $pageAssociation";
   }
 }

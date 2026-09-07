@@ -12,7 +12,8 @@ class RangeFilteredRandomAccessRead extends RandomAccessRead {
   RangeFilteredRandomAccessRead(Uint8List data, List<int> ranges)
       : _data = Uint8List.view(data.buffer, data.offsetInBytes, data.length) {
     if (ranges.length.isOdd) {
-      throw ArgumentError.value(ranges.length, 'ranges', 'Must contain begin/length pairs');
+      throw ArgumentError.value(
+          ranges.length, 'ranges', 'Must contain begin/length pairs');
     }
     if (ranges.isEmpty) {
       _segments = const <_Segment>[];
@@ -30,7 +31,8 @@ class RangeFilteredRandomAccessRead extends RandomAccessRead {
       }
       final end = start + length;
       if (end > data.length) {
-        throw ArgumentError('Range [$start, $length] exceeds buffer length ${data.length}');
+        throw ArgumentError(
+            'Range [$start, $length] exceeds buffer length ${data.length}');
       }
       if (length == 0) {
         continue;
@@ -84,7 +86,8 @@ class RangeFilteredRandomAccessRead extends RandomAccessRead {
       final available = segment.length - segmentOffset;
       final toCopy = math.min(available, remaining);
       final sourceOffset = segment.start + segmentOffset;
-      final slice = Uint8List.sublistView(_data, sourceOffset, sourceOffset + toCopy);
+      final slice =
+          Uint8List.sublistView(_data, sourceOffset, sourceOffset + toCopy);
       buffer.setRange(offset + written, offset + written + toCopy, slice);
 
       written += toCopy;

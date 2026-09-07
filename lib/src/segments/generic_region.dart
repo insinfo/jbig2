@@ -9,7 +9,7 @@ import '../decoder/mmr/mmr_decompressor.dart';
 
 class GenericRegion implements Region {
   SubInputStream? _subInputStream;
-  int _dataHeaderOffset = 0;
+  final int _dataHeaderOffset = 0;
   int _dataOffset = 0;
   // ignore: unused_field
   int _dataLength = 0;
@@ -106,8 +106,8 @@ class GenericRegion implements Region {
     if (_regionBitmap == null) {
       if (_isMMREncoded) {
         _subInputStream!.seek(_dataOffset);
-        final view = _subInputStream!.wrappedStream.createView(
-            _subInputStream!.offset + _dataOffset, _dataLength);
+        final view = _subInputStream!.wrappedStream
+            .createView(_subInputStream!.offset + _dataOffset, _dataLength);
         final MMRDecompressor mmrDecompressor = MMRDecompressor(
             _regionInfo!.bitmapWidth, _regionInfo!.bitmapHeight, view);
         _regionBitmap = mmrDecompressor.uncompress();
@@ -116,14 +116,11 @@ class GenericRegion implements Region {
 
         int ltp = 0;
 
-        if (_arithDecoder == null) {
-          _arithDecoder = ArithmeticDecoder(_subInputStream!);
-        }
-        if (_cx == null) {
-          _cx = CX(65536, 1);
-        }
+        _arithDecoder ??= ArithmeticDecoder(_subInputStream!);
+        _cx ??= CX(65536, 1);
 
-        _regionBitmap = Bitmap(_regionInfo!.bitmapWidth, _regionInfo!.bitmapHeight);
+        _regionBitmap =
+            Bitmap(_regionInfo!.bitmapWidth, _regionInfo!.bitmapHeight);
 
         final int paddedWidth = (_regionBitmap!.width + 7) & -8;
 
@@ -137,7 +134,8 @@ class GenericRegion implements Region {
               _copyLineAbove(line);
             }
           } else {
-            _decodeLine(line, _regionBitmap!.width, _regionBitmap!.rowStride, paddedWidth);
+            _decodeLine(line, _regionBitmap!.width, _regionBitmap!.rowStride,
+                paddedWidth);
           }
         }
       }
@@ -163,26 +161,32 @@ class GenericRegion implements Region {
     return _arithDecoder!.decode(_cx!);
   }
 
-  void _decodeLine(final int lineNumber, final int width, final int rowStride, final int paddedWidth) {
+  void _decodeLine(final int lineNumber, final int width, final int rowStride,
+      final int paddedWidth) {
     final int byteIndex = _regionBitmap!.getByteIndex(0, lineNumber);
     final int idx = byteIndex - rowStride;
 
     switch (_gbTemplate) {
       case 0:
         if (!_useExtTemplates) {
-          _decodeTemplate0a(lineNumber, width, rowStride, paddedWidth, byteIndex, idx);
+          _decodeTemplate0a(
+              lineNumber, width, rowStride, paddedWidth, byteIndex, idx);
         } else {
-          _decodeTemplate0b(lineNumber, width, rowStride, paddedWidth, byteIndex, idx);
+          _decodeTemplate0b(
+              lineNumber, width, rowStride, paddedWidth, byteIndex, idx);
         }
         break;
       case 1:
-        _decodeTemplate1(lineNumber, width, rowStride, paddedWidth, byteIndex, idx);
+        _decodeTemplate1(
+            lineNumber, width, rowStride, paddedWidth, byteIndex, idx);
         break;
       case 2:
-        _decodeTemplate2(lineNumber, width, rowStride, paddedWidth, byteIndex, idx);
+        _decodeTemplate2(
+            lineNumber, width, rowStride, paddedWidth, byteIndex, idx);
         break;
       case 3:
-        _decodeTemplate3(lineNumber, width, rowStride, paddedWidth, byteIndex, idx);
+        _decodeTemplate3(
+            lineNumber, width, rowStride, paddedWidth, byteIndex, idx);
         break;
     }
   }
@@ -192,15 +196,16 @@ class GenericRegion implements Region {
     int sourceByteIndex = targetByteIndex - _regionBitmap!.rowStride;
 
     for (int i = 0; i < _regionBitmap!.rowStride; i++) {
-      _regionBitmap!.setByte(targetByteIndex++, _regionBitmap!.getByte(sourceByteIndex++));
+      _regionBitmap!.setByte(
+          targetByteIndex++, _regionBitmap!.getByte(sourceByteIndex++));
     }
   }
 
   // Templates implementation omitted for brevity, will add them in next step or if requested.
   // Wait, I should implement them.
 
-  void _decodeTemplate0a(final int lineNumber, final int width, final int rowStride, final int paddedWidth,
-      int byteIndex, int idx) {
+  void _decodeTemplate0a(final int lineNumber, final int width,
+      final int rowStride, final int paddedWidth, int byteIndex, int idx) {
     int context;
     int overriddenContext = 0;
 
@@ -224,17 +229,22 @@ class GenericRegion implements Region {
       final int minorWidth = width - x > 8 ? 8 : width - x;
 
       if (lineNumber > 0) {
-        line1 = (line1 << 8) | (nextByte < width ? _regionBitmap!.getByte(idx + 1) : 0);
+        line1 = (line1 << 8) |
+            (nextByte < width ? _regionBitmap!.getByte(idx + 1) : 0);
       }
 
       if (lineNumber > 1) {
-        line2 = (line2 << 8) | (nextByte < width ? _regionBitmap!.getByte(idx - rowStride + 1) << 6 : 0);
+        line2 = (line2 << 8) |
+            (nextByte < width
+                ? _regionBitmap!.getByte(idx - rowStride + 1) << 6
+                : 0);
       }
 
       for (int minorX = 0; minorX < minorWidth; minorX++) {
         final int toShift = 7 - minorX;
         if (_override) {
-          overriddenContext = _overrideAtTemplate0a(context, (x + minorX), lineNumber, result, minorX, toShift);
+          overriddenContext = _overrideAtTemplate0a(
+              context, (x + minorX), lineNumber, result, minorX, toShift);
           _cx!.index = overriddenContext;
         } else {
           _cx!.index = context;
@@ -244,7 +254,10 @@ class GenericRegion implements Region {
 
         result |= bit << toShift;
 
-        context = ((context & 0x7bf7) << 1) | bit | ((line1 >> toShift) & 0x10) | ((line2 >> toShift) & 0x800);
+        context = ((context & 0x7bf7) << 1) |
+            bit |
+            ((line1 >> toShift) & 0x10) |
+            ((line2 >> toShift) & 0x800);
       }
 
       _regionBitmap!.setByte(byteIndex++, result);
@@ -252,8 +265,8 @@ class GenericRegion implements Region {
     }
   }
 
-  void _decodeTemplate0b(final int lineNumber, final int width, final int rowStride, final int paddedWidth,
-      int byteIndex, int idx) {
+  void _decodeTemplate0b(final int lineNumber, final int width,
+      final int rowStride, final int paddedWidth, int byteIndex, int idx) {
     int context;
     int overriddenContext = 0;
 
@@ -277,17 +290,22 @@ class GenericRegion implements Region {
       final int minorWidth = width - x > 8 ? 8 : width - x;
 
       if (lineNumber > 0) {
-        line1 = (line1 << 8) | (nextByte < width ? _regionBitmap!.getByte(idx + 1) : 0);
+        line1 = (line1 << 8) |
+            (nextByte < width ? _regionBitmap!.getByte(idx + 1) : 0);
       }
 
       if (lineNumber > 1) {
-        line2 = (line2 << 8) | (nextByte < width ? _regionBitmap!.getByte(idx - rowStride + 1) << 6 : 0);
+        line2 = (line2 << 8) |
+            (nextByte < width
+                ? _regionBitmap!.getByte(idx - rowStride + 1) << 6
+                : 0);
       }
 
       for (int minorX = 0; minorX < minorWidth; minorX++) {
         final int toShift = 7 - minorX;
         if (_override) {
-          overriddenContext = _overrideAtTemplate0b(context, (x + minorX), lineNumber, result, minorX, toShift);
+          overriddenContext = _overrideAtTemplate0b(
+              context, (x + minorX), lineNumber, result, minorX, toShift);
           _cx!.index = overriddenContext;
         } else {
           _cx!.index = context;
@@ -297,7 +315,10 @@ class GenericRegion implements Region {
 
         result |= bit << toShift;
 
-        context = ((context & 0x7bf7) << 1) | bit | ((line1 >> toShift) & 0x10) | ((line2 >> toShift) & 0x800);
+        context = ((context & 0x7bf7) << 1) |
+            bit |
+            ((line1 >> toShift) & 0x10) |
+            ((line2 >> toShift) & 0x800);
       }
 
       _regionBitmap!.setByte(byteIndex++, result);
@@ -305,8 +326,8 @@ class GenericRegion implements Region {
     }
   }
 
-  void _decodeTemplate1(final int lineNumber, int width, final int rowStride, final int paddedWidth,
-      int byteIndex, int idx) {
+  void _decodeTemplate1(final int lineNumber, int width, final int rowStride,
+      final int paddedWidth, int byteIndex, int idx) {
     int context;
     int overriddenContext;
 
@@ -330,16 +351,21 @@ class GenericRegion implements Region {
       final int minorWidth = width - x > 8 ? 8 : width - x;
 
       if (lineNumber >= 1) {
-        line1 = (line1 << 8) | (nextByte < width ? _regionBitmap!.getByte(idx + 1) : 0);
+        line1 = (line1 << 8) |
+            (nextByte < width ? _regionBitmap!.getByte(idx + 1) : 0);
       }
 
       if (lineNumber >= 2) {
-        line2 = (line2 << 8) | (nextByte < width ? _regionBitmap!.getByte(idx - rowStride + 1) << 5 : 0);
+        line2 = (line2 << 8) |
+            (nextByte < width
+                ? _regionBitmap!.getByte(idx - rowStride + 1) << 5
+                : 0);
       }
 
       for (int minorX = 0; minorX < minorWidth; minorX++) {
         if (_override) {
-          overriddenContext = _overrideAtTemplate1(context, x + minorX, lineNumber, result, minorX);
+          overriddenContext = _overrideAtTemplate1(
+              context, x + minorX, lineNumber, result, minorX);
           _cx!.index = overriddenContext;
         } else {
           _cx!.index = context;
@@ -350,7 +376,10 @@ class GenericRegion implements Region {
         result |= bit << (7 - minorX);
 
         final int toShift = 8 - minorX;
-        context = ((context & 0xefb) << 1) | bit | ((line1 >> toShift) & 0x8) | ((line2 >> toShift) & 0x200);
+        context = ((context & 0xefb) << 1) |
+            bit |
+            ((line1 >> toShift) & 0x8) |
+            ((line2 >> toShift) & 0x200);
       }
 
       _regionBitmap!.setByte(byteIndex++, result);
@@ -358,8 +387,8 @@ class GenericRegion implements Region {
     }
   }
 
-  void _decodeTemplate2(final int lineNumber, final int width, final int rowStride, final int paddedWidth,
-      int byteIndex, int idx) {
+  void _decodeTemplate2(final int lineNumber, final int width,
+      final int rowStride, final int paddedWidth, int byteIndex, int idx) {
     int context;
     int overriddenContext;
 
@@ -383,17 +412,21 @@ class GenericRegion implements Region {
       final int minorWidth = width - x > 8 ? 8 : width - x;
 
       if (lineNumber >= 1) {
-        line1 = (line1 << 8) | (nextByte < width ? _regionBitmap!.getByte(idx + 1) : 0);
+        line1 = (line1 << 8) |
+            (nextByte < width ? _regionBitmap!.getByte(idx + 1) : 0);
       }
 
       if (lineNumber >= 2) {
-        line2 = (line2 << 8) | (nextByte < width ? _regionBitmap!.getByte(idx - rowStride + 1) << 4 : 0);
+        line2 = (line2 << 8) |
+            (nextByte < width
+                ? _regionBitmap!.getByte(idx - rowStride + 1) << 4
+                : 0);
       }
 
       for (int minorX = 0; minorX < minorWidth; minorX++) {
-
         if (_override) {
-          overriddenContext = _overrideAtTemplate2(context, x + minorX, lineNumber, result, minorX);
+          overriddenContext = _overrideAtTemplate2(
+              context, x + minorX, lineNumber, result, minorX);
           _cx!.index = overriddenContext;
         } else {
           _cx!.index = context;
@@ -404,7 +437,10 @@ class GenericRegion implements Region {
         result |= bit << (7 - minorX);
 
         final int toShift = 10 - minorX;
-        context = ((context & 0x1bd) << 1) | bit | ((line1 >> toShift) & 0x4) | ((line2 >> toShift) & 0x80);
+        context = ((context & 0x1bd) << 1) |
+            bit |
+            ((line1 >> toShift) & 0x4) |
+            ((line2 >> toShift) & 0x80);
       }
 
       _regionBitmap!.setByte(byteIndex++, result);
@@ -412,8 +448,8 @@ class GenericRegion implements Region {
     }
   }
 
-  void _decodeTemplate3(final int lineNumber, final int width, final int rowStride, final int paddedWidth,
-      int byteIndex, int idx) {
+  void _decodeTemplate3(final int lineNumber, final int width,
+      final int rowStride, final int paddedWidth, int byteIndex, int idx) {
     int context;
     int overriddenContext;
 
@@ -432,13 +468,14 @@ class GenericRegion implements Region {
       final int minorWidth = width - x > 8 ? 8 : width - x;
 
       if (lineNumber >= 1) {
-        line1 = (line1 << 8) | (nextByte < width ? _regionBitmap!.getByte(idx + 1) : 0);
+        line1 = (line1 << 8) |
+            (nextByte < width ? _regionBitmap!.getByte(idx + 1) : 0);
       }
 
       for (int minorX = 0; minorX < minorWidth; minorX++) {
-
         if (_override) {
-          overriddenContext = _overrideAtTemplate3(context, x + minorX, lineNumber, result, minorX);
+          overriddenContext = _overrideAtTemplate3(
+              context, x + minorX, lineNumber, result, minorX);
           _cx!.index = overriddenContext;
         } else {
           _cx!.index = context;
@@ -447,7 +484,8 @@ class GenericRegion implements Region {
         final int bit = _arithDecoder!.decode(_cx!);
 
         result |= bit << (7 - minorX);
-        context = ((context & 0x1f7) << 1) | bit | ((line1 >> (8 - minorX)) & 0x010);
+        context =
+            ((context & 0x1f7) << 1) | bit | ((line1 >> (8 - minorX)) & 0x010);
       }
 
       _regionBitmap!.setByte(byteIndex++, result);
@@ -505,91 +543,179 @@ class GenericRegion implements Region {
     _override = true;
   }
 
-  int _overrideAtTemplate0a(int context, final int x, final int y, final int result, final int minorX,
-      final int toShift) {
+  int _overrideAtTemplate0a(int context, final int x, final int y,
+      final int result, final int minorX, final int toShift) {
     if (_gbAtOverride![0]) {
       context &= 0xffef;
-      if (_gbAtY![0] == 0 && _gbAtX![0] >= -minorX)
+      if (_gbAtY![0] == 0 && _gbAtX![0] >= -minorX) {
         context |= (result >> (toShift - _gbAtX![0]) & 0x1) << 4;
-      else
+      } else {
         context |= _getPixel(x + _gbAtX![0], y + _gbAtY![0]) << 4;
+      }
     }
 
     if (_gbAtOverride![1]) {
       context &= 0xfbff;
-      if (_gbAtY![1] == 0 && _gbAtX![1] >= -minorX)
+      if (_gbAtY![1] == 0 && _gbAtX![1] >= -minorX) {
         context |= (result >> (toShift - _gbAtX![1]) & 0x1) << 10;
-      else
+      } else {
         context |= _getPixel(x + _gbAtX![1], y + _gbAtY![1]) << 10;
+      }
     }
 
     if (_gbAtOverride![2]) {
       context &= 0xf7ff;
-      if (_gbAtY![2] == 0 && _gbAtX![2] >= -minorX)
+      if (_gbAtY![2] == 0 && _gbAtX![2] >= -minorX) {
         context |= (result >> (toShift - _gbAtX![2]) & 0x1) << 11;
-      else
+      } else {
         context |= _getPixel(x + _gbAtX![2], y + _gbAtY![2]) << 11;
+      }
     }
 
     if (_gbAtOverride![3]) {
       context &= 0x7fff;
-      if (_gbAtY![3] == 0 && _gbAtX![3] >= -minorX)
+      if (_gbAtY![3] == 0 && _gbAtX![3] >= -minorX) {
         context |= (result >> (toShift - _gbAtX![3]) & 0x1) << 15;
-      else
+      } else {
         context |= _getPixel(x + _gbAtX![3], y + _gbAtY![3]) << 15;
+      }
     }
     return context;
   }
 
-  int _overrideAtTemplate0b(int context, final int x, final int y, final int result, final int minorX,
-      final int toShift) {
+  int _overrideAtTemplate0b(int context, final int x, final int y,
+      final int result, final int minorX, final int toShift) {
     // Implementation similar to 0a but with different masks and shifts
     // For brevity, I'll assume the user wants me to implement it fully.
     // I'll copy the logic from Java.
     if (_gbAtOverride![0]) {
       context &= 0xfffd;
-      if (_gbAtY![0] == 0 && _gbAtX![0] >= -minorX)
+      if (_gbAtY![0] == 0 && _gbAtX![0] >= -minorX) {
         context |= (result >> (toShift - _gbAtX![0]) & 0x1) << 1;
-      else
+      } else {
         context |= _getPixel(x + _gbAtX![0], y + _gbAtY![0]) << 1;
+      }
     }
-    if (_gbAtOverride![1]) { context &= 0xdfff; if (_gbAtY![1] == 0 && _gbAtX![1] >= -minorX) context |= (result >> (toShift - _gbAtX![1]) & 0x1) << 13; else context |= _getPixel(x + _gbAtX![1], y + _gbAtY![1]) << 13; }
-    if (_gbAtOverride![2]) { context &= 0xfdff; if (_gbAtY![2] == 0 && _gbAtX![2] >= -minorX) context |= (result >> (toShift - _gbAtX![2]) & 0x1) << 9; else context |= _getPixel(x + _gbAtX![2], y + _gbAtY![2]) << 9; }
-    if (_gbAtOverride![3]) { context &= 0xbfff; if (_gbAtY![3] == 0 && _gbAtX![3] >= -minorX) context |= (result >> (toShift - _gbAtX![3]) & 0x1) << 14; else context |= _getPixel(x + _gbAtX![3], y + _gbAtY![3]) << 14; }
-    if (_gbAtOverride![4]) { context &= 0xefff; if (_gbAtY![4] == 0 && _gbAtX![4] >= -minorX) context |= (result >> (toShift - _gbAtX![4]) & 0x1) << 12; else context |= _getPixel(x + _gbAtX![4], y + _gbAtY![4]) << 12; }
-    if (_gbAtOverride![5]) { context &= 0xffdf; if (_gbAtY![5] == 0 && _gbAtX![5] >= -minorX) context |= (result >> (toShift - _gbAtX![5]) & 0x1) << 5; else context |= _getPixel(x + _gbAtX![5], y + _gbAtY![5]) << 5; }
-    if (_gbAtOverride![6]) { context &= 0xfffb; if (_gbAtY![6] == 0 && _gbAtX![6] >= -minorX) context |= (result >> (toShift - _gbAtX![6]) & 0x1) << 2; else context |= _getPixel(x + _gbAtX![6], y + _gbAtY![6]) << 2; }
-    if (_gbAtOverride![7]) { context &= 0xfff7; if (_gbAtY![7] == 0 && _gbAtX![7] >= -minorX) context |= (result >> (toShift - _gbAtX![7]) & 0x1) << 3; else context |= _getPixel(x + _gbAtX![7], y + _gbAtY![7]) << 3; }
-    if (_gbAtOverride![8]) { context &= 0xf7ff; if (_gbAtY![8] == 0 && _gbAtX![8] >= -minorX) context |= (result >> (toShift - _gbAtX![8]) & 0x1) << 11; else context |= _getPixel(x + _gbAtX![8], y + _gbAtY![8]) << 11; }
-    if (_gbAtOverride![9]) { context &= 0xffef; if (_gbAtY![9] == 0 && _gbAtX![9] >= -minorX) context |= (result >> (toShift - _gbAtX![9]) & 0x1) << 4; else context |= _getPixel(x + _gbAtX![9], y + _gbAtY![9]) << 4; }
-    if (_gbAtOverride![10]) { context &= 0x7fff; if (_gbAtY![10] == 0 && _gbAtX![10] >= -minorX) context |= (result >> (toShift - _gbAtX![10]) & 0x1) << 15; else context |= _getPixel(x + _gbAtX![10], y + _gbAtY![10]) << 15; }
-    if (_gbAtOverride![11]) { context &= 0xfdff; if (_gbAtY![11] == 0 && _gbAtX![11] >= -minorX) context |= (result >> (toShift - _gbAtX![11]) & 0x1) << 10; else context |= _getPixel(x + _gbAtX![11], y + _gbAtY![11]) << 10; }
+    if (_gbAtOverride![1]) {
+      context &= 0xdfff;
+      if (_gbAtY![1] == 0 && _gbAtX![1] >= -minorX) {
+        context |= (result >> (toShift - _gbAtX![1]) & 0x1) << 13;
+      } else {
+        context |= _getPixel(x + _gbAtX![1], y + _gbAtY![1]) << 13;
+      }
+    }
+    if (_gbAtOverride![2]) {
+      context &= 0xfdff;
+      if (_gbAtY![2] == 0 && _gbAtX![2] >= -minorX) {
+        context |= (result >> (toShift - _gbAtX![2]) & 0x1) << 9;
+      } else {
+        context |= _getPixel(x + _gbAtX![2], y + _gbAtY![2]) << 9;
+      }
+    }
+    if (_gbAtOverride![3]) {
+      context &= 0xbfff;
+      if (_gbAtY![3] == 0 && _gbAtX![3] >= -minorX) {
+        context |= (result >> (toShift - _gbAtX![3]) & 0x1) << 14;
+      } else {
+        context |= _getPixel(x + _gbAtX![3], y + _gbAtY![3]) << 14;
+      }
+    }
+    if (_gbAtOverride![4]) {
+      context &= 0xefff;
+      if (_gbAtY![4] == 0 && _gbAtX![4] >= -minorX) {
+        context |= (result >> (toShift - _gbAtX![4]) & 0x1) << 12;
+      } else {
+        context |= _getPixel(x + _gbAtX![4], y + _gbAtY![4]) << 12;
+      }
+    }
+    if (_gbAtOverride![5]) {
+      context &= 0xffdf;
+      if (_gbAtY![5] == 0 && _gbAtX![5] >= -minorX) {
+        context |= (result >> (toShift - _gbAtX![5]) & 0x1) << 5;
+      } else {
+        context |= _getPixel(x + _gbAtX![5], y + _gbAtY![5]) << 5;
+      }
+    }
+    if (_gbAtOverride![6]) {
+      context &= 0xfffb;
+      if (_gbAtY![6] == 0 && _gbAtX![6] >= -minorX) {
+        context |= (result >> (toShift - _gbAtX![6]) & 0x1) << 2;
+      } else {
+        context |= _getPixel(x + _gbAtX![6], y + _gbAtY![6]) << 2;
+      }
+    }
+    if (_gbAtOverride![7]) {
+      context &= 0xfff7;
+      if (_gbAtY![7] == 0 && _gbAtX![7] >= -minorX) {
+        context |= (result >> (toShift - _gbAtX![7]) & 0x1) << 3;
+      } else {
+        context |= _getPixel(x + _gbAtX![7], y + _gbAtY![7]) << 3;
+      }
+    }
+    if (_gbAtOverride![8]) {
+      context &= 0xf7ff;
+      if (_gbAtY![8] == 0 && _gbAtX![8] >= -minorX) {
+        context |= (result >> (toShift - _gbAtX![8]) & 0x1) << 11;
+      } else {
+        context |= _getPixel(x + _gbAtX![8], y + _gbAtY![8]) << 11;
+      }
+    }
+    if (_gbAtOverride![9]) {
+      context &= 0xffef;
+      if (_gbAtY![9] == 0 && _gbAtX![9] >= -minorX) {
+        context |= (result >> (toShift - _gbAtX![9]) & 0x1) << 4;
+      } else {
+        context |= _getPixel(x + _gbAtX![9], y + _gbAtY![9]) << 4;
+      }
+    }
+    if (_gbAtOverride![10]) {
+      context &= 0x7fff;
+      if (_gbAtY![10] == 0 && _gbAtX![10] >= -minorX) {
+        context |= (result >> (toShift - _gbAtX![10]) & 0x1) << 15;
+      } else {
+        context |= _getPixel(x + _gbAtX![10], y + _gbAtY![10]) << 15;
+      }
+    }
+    if (_gbAtOverride![11]) {
+      context &= 0xfdff;
+      if (_gbAtY![11] == 0 && _gbAtX![11] >= -minorX) {
+        context |= (result >> (toShift - _gbAtX![11]) & 0x1) << 10;
+      } else {
+        context |= _getPixel(x + _gbAtX![11], y + _gbAtY![11]) << 10;
+      }
+    }
 
     return context;
   }
 
-  int _overrideAtTemplate1(int context, final int x, final int y, final int result, final int minorX) {
+  int _overrideAtTemplate1(int context, final int x, final int y,
+      final int result, final int minorX) {
     context &= 0x1ff7;
-    if (_gbAtY![0] == 0 && _gbAtX![0] >= -minorX)
+    if (_gbAtY![0] == 0 && _gbAtX![0] >= -minorX) {
       return (context | (result >> (7 - (minorX + _gbAtX![0])) & 0x1) << 3);
-    else
+    } else {
       return (context | _getPixel(x + _gbAtX![0], y + _gbAtY![0]) << 3);
+    }
   }
 
-  int _overrideAtTemplate2(int context, final int x, final int y, final int result, final int minorX) {
+  int _overrideAtTemplate2(int context, final int x, final int y,
+      final int result, final int minorX) {
     context &= 0x3fb;
-    if (_gbAtY![0] == 0 && _gbAtX![0] >= -minorX)
+    if (_gbAtY![0] == 0 && _gbAtX![0] >= -minorX) {
       return (context | (result >> (7 - (minorX + _gbAtX![0])) & 0x1) << 2);
-    else
+    } else {
       return (context | _getPixel(x + _gbAtX![0], y + _gbAtY![0]) << 2);
+    }
   }
 
-  int _overrideAtTemplate3(int context, final int x, final int y, final int result, final int minorX) {
+  int _overrideAtTemplate3(int context, final int x, final int y,
+      final int result, final int minorX) {
     context &= 0x3ef;
-    if (_gbAtY![0] == 0 && _gbAtX![0] >= -minorX)
+    if (_gbAtY![0] == 0 && _gbAtX![0] >= -minorX) {
       return (context | (result >> (7 - (minorX + _gbAtX![0])) & 0x1) << 4);
-    else
+    } else {
       return (context | _getPixel(x + _gbAtX![0], y + _gbAtY![0]) << 4);
+    }
   }
 
   int _getPixel(final int x, final int y) {
@@ -598,7 +724,17 @@ class GenericRegion implements Region {
     return _regionBitmap!.getPixel(x, y);
   }
 
-  void setParameters(bool isMMREncoded, int sdTemplate, bool isTPGDon, bool useSkip, List<int> sdATX, List<int> sdATY, int symWidth, int hcHeight, CX? cx, ArithmeticDecoder? arithmeticDecoder) {
+  void setParameters(
+      bool isMMREncoded,
+      int sdTemplate,
+      bool isTPGDon,
+      bool useSkip,
+      List<int> sdATX,
+      List<int> sdATY,
+      int symWidth,
+      int hcHeight,
+      CX? cx,
+      ArithmeticDecoder? arithmeticDecoder) {
     _isMMREncoded = isMMREncoded;
     _gbTemplate = sdTemplate;
     _isTPGDon = isTPGDon;
@@ -616,21 +752,31 @@ class GenericRegion implements Region {
   }
 
   // Overload for PatternDictionary and HalftoneRegion (if needed later)
-  void setParametersForPattern(bool isMMREncoded, int dataOffset, int dataLength, int gbh, int gbw, int gbTemplate, bool isTPGDon, bool useSkip, List<int> gbAtX, List<int> gbAtY) {
-     _dataOffset = dataOffset;
-     _dataLength = dataLength;
-     
-     _regionInfo = RegionSegmentInformation();
-     _regionInfo!.bitmapHeight = gbh;
-     _regionInfo!.bitmapWidth = gbw;
-     _gbTemplate = gbTemplate;
-     
-     _isMMREncoded = isMMREncoded;
-     _isTPGDon = isTPGDon;
-     _gbAtX = gbAtX;
-     _gbAtY = gbAtY;
-     
-     _regionBitmap = null;
+  void setParametersForPattern(
+      bool isMMREncoded,
+      int dataOffset,
+      int dataLength,
+      int gbh,
+      int gbw,
+      int gbTemplate,
+      bool isTPGDon,
+      bool useSkip,
+      List<int> gbAtX,
+      List<int> gbAtY) {
+    _dataOffset = dataOffset;
+    _dataLength = dataLength;
+
+    _regionInfo = RegionSegmentInformation();
+    _regionInfo!.bitmapHeight = gbh;
+    _regionInfo!.bitmapWidth = gbw;
+    _gbTemplate = gbTemplate;
+
+    _isMMREncoded = isMMREncoded;
+    _isTPGDon = isTPGDon;
+    _gbAtX = gbAtX;
+    _gbAtY = gbAtY;
+
+    _regionBitmap = null;
   }
 
   @override

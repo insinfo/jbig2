@@ -9,10 +9,11 @@ import 'random_access_stream_cache.dart';
 part 'scratch_file_buffer.dart';
 
 class ScratchFile implements RandomAccessStreamCache {
-  static bool _factoryRegistered = _registerFactory();
+  static final bool _factoryRegistered = _registerFactory();
 
   static bool _registerFactory() {
-    MemoryUsageSetting.registerScratchFileFactory((setting) => ScratchFile(setting));
+    MemoryUsageSetting.registerScratchFileFactory(
+        (setting) => ScratchFile(setting));
     return true;
   }
 
@@ -20,8 +21,10 @@ class ScratchFile implements RandomAccessStreamCache {
       : _maxMainMemoryIsRestricted =
             !setting.useMainMemory() || setting.isMainMemoryRestricted(),
         _useScratchFile =
-            (!setting.useMainMemory() || setting.isMainMemoryRestricted()) && setting.useTempFile(),
-  _scratchFileDirectory = setting.useTempFile() ? setting.getTempDir() : null,
+            (!setting.useMainMemory() || setting.isMainMemoryRestricted()) &&
+                setting.useTempFile(),
+        _scratchFileDirectory =
+            setting.useTempFile() ? setting.getTempDir() : null,
         _inMemoryMaxPageCount = setting.useMainMemory()
             ? (setting.isMainMemoryRestricted()
                 ? _safePageCount(setting.getMaxMainMemoryBytes())
@@ -32,7 +35,8 @@ class ScratchFile implements RandomAccessStreamCache {
             : _unrestrictedPageLimit {
     assert(_factoryRegistered, 'ScratchFile factory registration failed');
     if (_scratchFileDirectory != null && !_scratchFileDirectory.existsSync()) {
-      throw IOException('Scratch file directory does not exist: ${_scratchFileDirectory.path}');
+      throw IOException(
+          'Scratch file directory does not exist: ${_scratchFileDirectory.path}');
     }
   }
 
@@ -103,7 +107,8 @@ class ScratchFile implements RandomAccessStreamCache {
       try {
         file.deleteSync();
       } on FileSystemException catch (e) {
-        throw IOException('Error deleting scratch file: ${file.path}: ${e.message}');
+        throw IOException(
+            'Error deleting scratch file: ${file.path}: ${e.message}');
       }
     }
 
@@ -149,7 +154,8 @@ class ScratchFile implements RandomAccessStreamCache {
   Uint8List readPage(int pageIdx) {
     if (pageIdx < 0 || pageIdx >= _pageCount) {
       _checkClosed();
-      throw IOException('Page index out of range: $pageIdx. Max value: ${_pageCount - 1}');
+      throw IOException(
+          'Page index out of range: $pageIdx. Max value: ${_pageCount - 1}');
     }
 
     final inMemoryPages = _inMemoryPages;
@@ -157,7 +163,8 @@ class ScratchFile implements RandomAccessStreamCache {
       final page = inMemoryPages[pageIdx];
       if (page == null) {
         _checkClosed();
-        throw IOException('Requested page with index $pageIdx was not written before.');
+        throw IOException(
+            'Requested page with index $pageIdx was not written before.');
       }
       return Uint8List.fromList(page);
     }
@@ -168,7 +175,8 @@ class ScratchFile implements RandomAccessStreamCache {
     raf.setPositionSync(fileOffset);
     var totalRead = 0;
     while (totalRead < _pageSize) {
-      final bytesRead = raf.readIntoSync(page, totalRead, totalRead + (_pageSize - totalRead));
+      final bytesRead = raf.readIntoSync(
+          page, totalRead, totalRead + (_pageSize - totalRead));
       if (bytesRead <= 0) {
         break;
       }
@@ -180,10 +188,12 @@ class ScratchFile implements RandomAccessStreamCache {
   void writePage(int pageIdx, Uint8List page) {
     if (pageIdx < 0 || pageIdx >= _pageCount) {
       _checkClosed();
-      throw IOException('Page index out of range: $pageIdx. Max value: ${_pageCount - 1}');
+      throw IOException(
+          'Page index out of range: $pageIdx. Max value: ${_pageCount - 1}');
     }
     if (page.length != _pageSize) {
-      throw IOException('Wrong page size to write: ${page.length}. Expected: $_pageSize');
+      throw IOException(
+          'Wrong page size to write: ${page.length}. Expected: $_pageSize');
     }
 
     if (pageIdx < _inMemoryMaxPageCount || !_maxMainMemoryIsRestricted) {
@@ -225,7 +235,8 @@ class ScratchFile implements RandomAccessStreamCache {
         ? _inMemoryMaxPageCount
         : _initUnrestrictedMainMemPageCount;
     final capacity = initialLength > 0 ? initialLength : _enlargePageCount;
-    _inMemoryPages = List<Uint8List?>.filled(capacity, null, growable: !_maxMainMemoryIsRestricted);
+    _inMemoryPages = List<Uint8List?>.filled(capacity, null,
+        growable: !_maxMainMemoryIsRestricted);
     _freePages = List<bool>.filled(capacity, true, growable: true);
   }
 
@@ -300,7 +311,8 @@ class ScratchFile implements RandomAccessStreamCache {
     dir.createSync(recursive: true);
     File file;
     do {
-      final name = 'pdfbox_${DateTime.now().microsecondsSinceEpoch}_${_scratchFileId++}.tmp';
+      final name =
+          'pdfbox_${DateTime.now().microsecondsSinceEpoch}_${_scratchFileId++}.tmp';
       file = File('${dir.path}${Platform.pathSeparator}$name');
     } while (file.existsSync());
 

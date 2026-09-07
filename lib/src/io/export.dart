@@ -1,4 +1,4 @@
-library io;
+library;
 
 export 'closeable.dart';
 export 'exceptions.dart';

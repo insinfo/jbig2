@@ -8,13 +8,14 @@ class MemoryUsageSetting {
     required bool useTempFile,
     required int maxMainMemoryBytes,
     required int maxStorageBytes,
-  })
-      : _useTempFile = useTempFile,
-        _normalized = _normalize(useMainMemory, useTempFile, maxMainMemoryBytes, maxStorageBytes) {
+  })  : _useTempFile = useTempFile,
+        _normalized = _normalize(
+            useMainMemory, useTempFile, maxMainMemoryBytes, maxStorageBytes) {
     streamCache = () => _scratchFileFactory(this);
   }
 
-  factory MemoryUsageSetting.setupMainMemoryOnly([int maxMainMemoryBytes = -1]) {
+  factory MemoryUsageSetting.setupMainMemoryOnly(
+      [int maxMainMemoryBytes = -1]) {
     return MemoryUsageSetting._internal(
       useMainMemory: true,
       useTempFile: false,
@@ -32,7 +33,8 @@ class MemoryUsageSetting {
     );
   }
 
-  factory MemoryUsageSetting.setupMixed(int maxMainMemoryBytes, [int maxStorageBytes = -1]) {
+  factory MemoryUsageSetting.setupMixed(int maxMainMemoryBytes,
+      [int maxStorageBytes = -1]) {
     return MemoryUsageSetting._internal(
       useMainMemory: true,
       useTempFile: true,
@@ -115,7 +117,8 @@ class MemoryUsageSetting {
     }
 
     if (locUseMainMemory && locMaxStorageBytes > -1) {
-      if (locMaxMainMemoryBytes == -1 || locMaxMainMemoryBytes > locMaxStorageBytes) {
+      if (locMaxMainMemoryBytes == -1 ||
+          locMaxMainMemoryBytes > locMaxStorageBytes) {
         locMaxStorageBytes = locMaxMainMemoryBytes;
       }
     }
@@ -131,8 +134,8 @@ class MemoryUsageSetting {
     );
   }
 
-  static RandomAccessStreamCache Function(MemoryUsageSetting) _scratchFileFactory =
-      (setting) => RandomAccessStreamCacheImpl();
+  static RandomAccessStreamCache Function(MemoryUsageSetting)
+      _scratchFileFactory = (setting) => RandomAccessStreamCacheImpl();
 }
 
 class _NormalizedConfig {

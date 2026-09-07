@@ -9,17 +9,17 @@ void main() {
     test('compareChecksum 042_1.jb2', () {
       final filepath = 'test/resources/images/042_1.jb2';
       final checksum = "69-26-6629-1793-107941058147-58-79-37-31-79";
-      
+
       final file = File(filepath);
       if (!file.existsSync()) {
         fail('Test resource not found: ${file.path}');
       }
       final bytes = file.readAsBytesSync();
       final rar = RandomAccessReadBuffer.fromBytes(bytes);
-      
+
       final doc = JBIG2Document(rar);
       final bitmap = doc.getPage(1).getBitmap();
-      
+
       final digest = md5.convert(bitmap.getByteArray()).bytes;
       final sb = StringBuffer();
       for (var b in digest) {
@@ -32,7 +32,7 @@ void main() {
         if (val > 127) val -= 256;
         sb.write(val);
       }
-      
+
       expect(sb.toString(), checksum);
     });
   });

@@ -11,18 +11,19 @@ class RandomAccessReadView extends RandomAccessRead {
   final bool _closeInput;
   int _currentPosition = 0;
 
-  RandomAccessReadView(RandomAccessRead randomAccessRead, int startPosition, int streamLength)
+  RandomAccessReadView(
+      RandomAccessRead randomAccessRead, int startPosition, int streamLength)
       : this._(randomAccessRead, startPosition, streamLength, false);
 
-  RandomAccessReadView._(RandomAccessRead randomAccessRead, int startPosition, int streamLength,
-      bool closeInput)
+  RandomAccessReadView._(RandomAccessRead randomAccessRead, int startPosition,
+      int streamLength, bool closeInput)
       : _randomAccessRead = randomAccessRead,
         _startPosition = startPosition,
         _streamLength = streamLength,
         _closeInput = closeInput;
 
-  RandomAccessReadView.withCloseControl(
-      RandomAccessRead randomAccessRead, int startPosition, int streamLength, bool closeInput)
+  RandomAccessReadView.withCloseControl(RandomAccessRead randomAccessRead,
+      int startPosition, int streamLength, bool closeInput)
       : this._(randomAccessRead, startPosition, streamLength, closeInput);
 
   RandomAccessRead? get _delegate => _randomAccessRead;
@@ -63,8 +64,8 @@ class RandomAccessReadView extends RandomAccessRead {
     }
     _restorePosition();
     final effectiveLength = length ?? (buffer.length - offset);
-    final bytesRead =
-        _delegate!.readBuffer(buffer, offset, math.min(effectiveLength, available()));
+    final bytesRead = _delegate!
+        .readBuffer(buffer, offset, math.min(effectiveLength, available()));
     _currentPosition += bytesRead;
     return bytesRead;
   }

@@ -12,11 +12,11 @@ void main() {
 
       final rar = RandomAccessReadBuffer.fromBytes(file.readAsBytesSync());
       final doc = JBIG2Document(rar);
-      
+
       // JBIG2 pages are 1-based
       final page = doc.getPage(1);
       final bitmap = page.getBitmap();
-      
+
       expect(bitmap, isNotNull);
       expect(bitmap.width, greaterThan(0));
       expect(bitmap.height, greaterThan(0));
@@ -29,7 +29,7 @@ void main() {
 
       final rar = RandomAccessReadBuffer.fromBytes(file.readAsBytesSync());
       final doc = JBIG2Document(rar);
-      
+
       final numImages = doc.getAmountOfPages();
       expect(numImages, 17);
     });

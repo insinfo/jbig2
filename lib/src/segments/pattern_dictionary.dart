@@ -11,7 +11,7 @@ class PatternDictionary implements Dictionary {
   SubInputStream? _subInputStream;
 
   // Segment data structure (only necessary if MMR is used)
-  int _dataHeaderOffset = 0;
+  final int _dataHeaderOffset = 0;
   int _dataHeaderLength = 0;
   int _dataOffset = 0;
   int _dataLength = 0;
@@ -113,10 +113,12 @@ class PatternDictionary implements Dictionary {
 
   void _extractPatterns(Bitmap collectiveBitmap) {
     int gray = 0;
-    _patterns = []; // Size hint not available in Dart List constructor like Java ArrayList
+    _patterns =
+        []; // Size hint not available in Dart List constructor like Java ArrayList
 
     while (gray <= _grayMax) {
-      final Rectangle roi = Rectangle(_hdpWidth * gray, 0, _hdpWidth, _hdpHeight);
+      final Rectangle roi =
+          Rectangle(_hdpWidth * gray, 0, _hdpWidth, _hdpHeight);
       final Bitmap patternBitmap = Bitmaps.extract(roi, collectiveBitmap);
       _patterns!.add(patternBitmap);
       gray++;

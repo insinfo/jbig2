@@ -1,0 +1,17 @@
+dpdf jbig2
+Copyright 2026 Isaque Neves and the jbig2 Dart port contributors
+
+This product includes software developed at
+The Apache Software Foundation (http://www.apache.org/).
+
+The decoder in lib/src (segments, arithmetic and Huffman decoding, MMR, the
+bitmap model and the stream readers) is a Dart port of Apache PDFBox JBIG2
+ImageIO, formerly levigo JBIG2-ImageIO:
+
+    https://github.com/apache/pdfbox-jbig2
+
+    Copyright 2010-2011 levigo holding gmbh
+    Copyright The Apache Software Foundation
+
+The encoder in lib/src/encoder and the public API in lib/src/api are new work
+written for this package, and are released under the same licence.

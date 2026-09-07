@@ -1,21 +1,26 @@
 name: jbig2
-description: Pure dart jbig2
+description: >-
+  Pure Dart JBIG2 codec: decodes standalone files and the embedded streams
+  PDF's /JBIG2Decode filter carries, and encodes bi-level bitmaps back to
+  either form. Runs on the VM, dart2js and dart2wasm.
 version: 1.0.0
-homepage: https://github.com/insinfo/jbig2
-publish_to: none
+repository: https://github.com/insinfo/jbig2
+issue_tracker: https://github.com/insinfo/jbig2/issues
+
+topics:
+  - jbig2
+  - image
+  - codec
+  - pdf
 
 environment:
   sdk: ^3.6.0
-  
+
 dependencies:
   logging: ^1.3.0
 
- 
-dev_dependencies:  
-  crypto: ^3.0.7
+dev_dependencies:
+  lints: ^5.0.0
   test: ^1.26.3
-
-  
-
- 
-
+  # Independent oracle for the decoder fixtures; never imported by lib/.
+  crypto: ^3.0.7

@@ -14,10 +14,10 @@ void main() {
     final bytes = file.readAsBytesSync();
     final rar = RandomAccessReadBuffer.fromBytes(bytes);
     final sis = SubInputStream(rar, 130, 49);
-    
+
     final rsi = RegionSegmentInformation(sis);
     rsi.parseHeader();
-    
+
     expect(rsi.getBitmapWidth(), 37);
     expect(rsi.getBitmapHeight(), 8);
     expect(rsi.getXLocation(), 4);

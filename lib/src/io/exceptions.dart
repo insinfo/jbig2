@@ -8,7 +8,7 @@ class IOException implements Exception {
 }
 
 class EofException extends IOException {
-  EofException(String message) : super(message);
+  EofException(super.message);
 
   @override
   String toString() => 'EofException: $message';

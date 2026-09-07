@@ -53,14 +53,10 @@ class InternalNode extends Node {
     } else {
       // the child will be an InternalNode
       if (bit == 1) {
-        if (_one == null) {
-          _one = InternalNode(_depth + 1);
-        }
+        _one ??= InternalNode(_depth + 1);
         (_one as InternalNode).append(c);
       } else {
-        if (_zero == null) {
-          _zero = InternalNode(_depth + 1);
-        }
+        _zero ??= InternalNode(_depth + 1);
         (_zero as InternalNode).append(c);
       }
     }

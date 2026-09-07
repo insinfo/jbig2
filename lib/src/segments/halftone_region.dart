@@ -14,7 +14,7 @@ import 'generic_region.dart';
 class HalftoneRegion implements Region {
   SubInputStream? _subInputStream;
   SegmentHeader? _segmentHeader;
-  int _dataHeaderOffset = 0;
+  final int _dataHeaderOffset = 0;
   int _dataHeaderLength = 0;
   int _dataOffset = 0;
   int _dataLength = 0;
@@ -54,7 +54,8 @@ class HalftoneRegion implements Region {
     _regionInfo.parseHeader();
 
     _hDefaultPixel = _subInputStream!.readBit();
-    _hCombinationOperator = CombinationOperator.translateOperatorCodeToEnum(_subInputStream!.readBits(3) & 0xf);
+    _hCombinationOperator = CombinationOperator.translateOperatorCodeToEnum(
+        _subInputStream!.readBits(3) & 0xf);
 
     if (_subInputStream!.readBit() == 1) {
       _hSkipEnabled = true;
@@ -77,34 +78,35 @@ class HalftoneRegion implements Region {
     // I need to sign extend if it's supposed to be signed 32-bit.
     // Java (int) cast does sign extension if the 32nd bit is set.
     _hGridX = _toSigned32(_hGridX);
-    
+
     _hGridY = _subInputStream!.readBits(32);
     _hGridY = _toSigned32(_hGridY);
 
     _hRegionX = _subInputStream!.readBits(16) & 0xffff;
-    _hRegionX = _toSigned16(_hRegionX); // Java: (int) subInputStream.readBits(16) & 0xffff; -> This is unsigned 16 bit in Java int.
+    _hRegionX = _toSigned16(
+        _hRegionX); // Java: (int) subInputStream.readBits(16) & 0xffff; -> This is unsigned 16 bit in Java int.
     // Wait, Java: hRegionX = (int) subInputStream.readBits(16) & 0xffff;
     // readBits returns long in Java? No, int or long.
     // If readBits returns long, & 0xffff keeps it positive.
     // So hRegionX is unsigned 16-bit.
     // My readBits returns int.
-    
+
     _hRegionY = _subInputStream!.readBits(16) & 0xffff;
     // Same here.
 
     _computeSegmentDataStructure();
     _checkInput();
   }
-  
+
   int _toSigned32(int val) {
     if (val >= 0x80000000) return val - 0x100000000;
     return val;
   }
-  
+
   int _toSigned16(int val) {
-      // Java code uses & 0xffff, so it treats it as unsigned 16-bit integer stored in int.
-      // So I don't need to sign extend.
-      return val;
+    // Java code uses & 0xffff, so it treats it as unsigned 16-bit integer stored in int.
+    // So I don't need to sign extend.
+    return val;
   }
 
   void _computeSegmentDataStructure() {
@@ -119,7 +121,8 @@ class HalftoneRegion implements Region {
         Logger.info("hTemplate = $_hTemplate (should contain the value 0)");
       }
       if (_hSkipEnabled) {
-        Logger.info("hSkipEnabled 0 $_hSkipEnabled (should contain the value false)");
+        Logger.info(
+            "hSkipEnabled 0 $_hSkipEnabled (should contain the value false)");
       }
     }
   }
@@ -127,16 +130,15 @@ class HalftoneRegion implements Region {
   @override
   Bitmap getRegionBitmap() {
     if (_halftoneRegionBitmap == null) {
-      _halftoneRegionBitmap = Bitmap(_regionInfo.bitmapWidth, _regionInfo.bitmapHeight);
+      _halftoneRegionBitmap =
+          Bitmap(_regionInfo.bitmapWidth, _regionInfo.bitmapHeight);
 
-      if (_patterns == null) {
-        _patterns = _getPatterns();
-      }
+      _patterns ??= _getPatterns();
 
       if (_hDefaultPixel == 1) {
         // Fill with 0xff
-        for(int i=0; i<_halftoneRegionBitmap!.getByteArray().length; i++) {
-            _halftoneRegionBitmap!.getByteArray()[i] = 0xff;
+        for (int i = 0; i < _halftoneRegionBitmap!.getByteArray().length; i++) {
+          _halftoneRegionBitmap!.getByteArray()[i] = 0xff;
         }
       }
 
@@ -154,7 +156,8 @@ class HalftoneRegion implements Region {
         x = _computeX(m, n);
         y = _computeY(m, n);
         final Bitmap patternBitmap = _patterns![grayScaleValues[m][n]];
-        Bitmaps.blit(patternBitmap, _halftoneRegionBitmap!, (x + _hGridX), (y + _hGridY), _hCombinationOperator);
+        Bitmaps.blit(patternBitmap, _halftoneRegionBitmap!, (x + _hGridX),
+            (y + _hGridY), _hCombinationOperator);
       }
     }
   }
@@ -163,7 +166,8 @@ class HalftoneRegion implements Region {
     final List<Bitmap> patterns = [];
     if (_segmentHeader != null) {
       for (SegmentHeader s in _segmentHeader!.rtSegments) {
-        final PatternDictionary patternDictionary = s.getSegmentData() as PatternDictionary;
+        final PatternDictionary patternDictionary =
+            s.getSegmentData() as PatternDictionary;
         patterns.addAll(patternDictionary.getDictionary());
       }
     }
@@ -194,8 +198,17 @@ class HalftoneRegion implements Region {
     List<Bitmap?> grayScalePlanes = List.filled(bitsPerValue, null);
 
     GenericRegion genericRegion = GenericRegion(_subInputStream!);
-    genericRegion.setParametersForPattern(_isMMREncoded, _dataOffset, _dataLength, _hGridHeight, _hGridWidth, _hTemplate, false,
-        _hSkipEnabled, gbAtX!, gbAtY!);
+    genericRegion.setParametersForPattern(
+        _isMMREncoded,
+        _dataOffset,
+        _dataLength,
+        _hGridHeight,
+        _hGridWidth,
+        _hTemplate,
+        false,
+        _hSkipEnabled,
+        gbAtX!,
+        gbAtY!);
 
     int j = bitsPerValue - 1;
     grayScalePlanes[j] = genericRegion.getRegionBitmap();
@@ -216,13 +229,16 @@ class HalftoneRegion implements Region {
       for (int x = 0; x < grayScalePlanes[j]!.width; x += 8) {
         final int newValue = grayScalePlanes[j + 1]!.getByte(byteIndex);
         final int oldValue = grayScalePlanes[j]!.getByte(byteIndex);
-        grayScalePlanes[j]!.setByte(byteIndex++, Bitmaps.combineBytes(oldValue, newValue, CombinationOperator.XOR));
+        grayScalePlanes[j]!.setByte(byteIndex++,
+            Bitmaps.combineBytes(oldValue, newValue, CombinationOperator.XOR));
       }
     }
   }
 
-  List<List<int>> _computeGrayScaleValues(final List<Bitmap?> grayScalePlanes, final int bitsPerValue) {
-    final List<List<int>> grayScaleValues = List.generate(_hGridHeight, (_) => List.filled(_hGridWidth, 0));
+  List<List<int>> _computeGrayScaleValues(
+      final List<Bitmap?> grayScalePlanes, final int bitsPerValue) {
+    final List<List<int>> grayScaleValues =
+        List.generate(_hGridHeight, (_) => List.filled(_hGridWidth, 0));
 
     for (int y = 0; y < _hGridHeight; y++) {
       for (int x = 0; x < _hGridWidth; x += 8) {
@@ -234,7 +250,9 @@ class HalftoneRegion implements Region {
           grayScaleValues[y][i] = 0;
 
           for (int j = 0; j < bitsPerValue; j++) {
-            grayScaleValues[y][i] += ((grayScalePlanes[j]!.getByte(byteIndex) >> (7 - i & 7)) & 1) * (1 << j);
+            grayScaleValues[y][i] +=
+                ((grayScalePlanes[j]!.getByte(byteIndex) >> (7 - i & 7)) & 1) *
+                    (1 << j);
           }
         }
       }
@@ -263,7 +281,7 @@ class HalftoneRegion implements Region {
       // If value is -1 (0xFFFFFFFF), highestOneBit is 0x80000000 (min value).
       // Math.log(0x80000000) is 31.
       // 31 - 31 = 0. Loop doesn't run.
-      
+
       // Let's look at Java code again.
       /*
       final int bitPosition = (int) (Math.log(Integer.highestOneBit(value)) / Math.log(2));
@@ -276,24 +294,24 @@ class HalftoneRegion implements Region {
       // But if it was logical shift (>>>), top bits are 0.
       // Java code uses >>= which is arithmetic shift. So top bits are already 1s if it was negative.
       // So why this loop?
-      
+
       // Maybe hGridX etc are treated as fixed point?
       // "7.4.5.1.2.3 Horizontal offset of the grid ... 4 bytes ... signed integer"
       // "7.4.5.1.3.1 Horizontal coordinate of the halftone grid vector ... 2 bytes ... signed integer"
-      
+
       // The formula for x is: x = (HGX + m * HRY + n * HRX) >> 8
       // This looks like fixed point arithmetic with 8 fractional bits.
-      
+
       // If I use Dart's >> operator, it preserves sign.
       // So `value >>= 8` should be correct for arithmetic shift.
-      
+
       // The Java code `shiftAndFill` seems to be trying to replicate arithmetic shift behavior if the input was somehow not sign extended correctly or if they want to fill more bits?
       // Or maybe `value` passed to `shiftAndFill` is the result of the calculation.
-      
+
       // Let's assume Dart's `>>` is sufficient for arithmetic shift.
       // But I should check if `value` passed to `shiftAndFill` can be negative.
       // Yes.
-      
+
       // If I just return `value`, it should be fine?
       // Let's check what the Java code actually does.
       // `Integer.highestOneBit(value)` for a negative number returns `Integer.MIN_VALUE` (0x80000000).
@@ -304,17 +322,17 @@ class HalftoneRegion implements Region {
       // `Integer.highestOneBit(-100)` is `0x80000000`.
       // So for any negative number, `bitPosition` is 31.
       // So the loop never runs.
-      
+
       // What if `value` is positive but was supposed to be negative?
       // No, `value < 0` check prevents that.
-      
+
       // Maybe `value` is not fully sign extended?
       // If `value` comes from `hGridX` (32-bit signed) + ...
       // It is a 32-bit signed integer.
-      
+
       // I suspect the Java code might be redundant or I am missing something about `highestOneBit`.
       // `highestOneBit(i)`: "Returns an int value with at most a single one-bit, in the position of the highest-order ("leftmost") one-bit in the specified int value."
-      
+
       // If I just use `>> 8`, it should be fine.
     }
     return value;

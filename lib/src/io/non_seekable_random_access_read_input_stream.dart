@@ -140,7 +140,8 @@ class NonSeekableRandomAccessReadInputStream extends RandomAccessRead {
       return;
     }
     if (_position < bytes) {
-      throw IOException('Not enough bytes available to perform rewind of $bytes');
+      throw IOException(
+          'Not enough bytes available to perform rewind of $bytes');
     }
     if (_currentBufferPointer >= bytes) {
       _currentBufferPointer -= bytes;

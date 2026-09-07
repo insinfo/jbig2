@@ -1,7 +1,8 @@
 import 'huffman_table.dart';
 
 class StandardTables {
-  static final List<HuffmanTable?> _standardTables = List<HuffmanTable?>.filled(_tables.length, null);
+  static final List<HuffmanTable?> _standardTables =
+      List<HuffmanTable?>.filled(_tables.length, null);
 
   static HuffmanTable getTable(int number) {
     var table = _standardTables[number - 1];
@@ -28,7 +29,8 @@ class StandardTables {
       [3, 0, 2], //
       [4, 3, 3], //
       [5, 6, 11], //
-      [6, 32, 75], /* high */
+      [6, 32, 75],
+      /* high */
       [6, -1, 0] /* OOB */
     ],
     // B3
@@ -39,8 +41,10 @@ class StandardTables {
       [3, 0, 2], //
       [4, 3, 3], //
       [5, 6, 11], //
-      [8, 32, -257, 999], /* low */
-      [7, 32, 75], /* high */
+      [8, 32, -257, 999],
+      /* low */
+      [7, 32, 75],
+      /* high */
       [6, -1, 0] /* OOB */
     ],
     // B4
@@ -60,7 +64,8 @@ class StandardTables {
       [3, 0, 3], //
       [4, 3, 4], //
       [5, 6, 12], //
-      [7, 32, -256, 999], /* low */
+      [7, 32, -256, 999],
+      /* low */
       [6, 32, 76] /* high */
     ],
     // B6
@@ -77,7 +82,8 @@ class StandardTables {
       [3, 8, 256], //
       [4, 9, 512], //
       [4, 10, 1024], //
-      [6, 32, -2049, 999], /* low */
+      [6, 32, -2049, 999],
+      /* low */
       [6, 32, 2048] /* high */
     ],
     // B7
@@ -95,7 +101,8 @@ class StandardTables {
       [3, 8, 256], //
       [3, 9, 512], //
       [3, 10, 1024], //
-      [5, 32, -1025, 999], /* low */
+      [5, 32, -1025, 999],
+      /* low */
       [5, 32, 2048] /* high */
     ],
     // B8
@@ -118,8 +125,10 @@ class StandardTables {
       [6, 7, 262], //
       [7, 8, 390], //
       [6, 10, 646], //
-      [9, 32, -16, 999], /* low */
-      [9, 32, 1670], /* high */
+      [9, 32, -16, 999],
+      /* low */
+      [9, 32, 1670],
+      /* high */
       [2, -1, 0] /* OOB */
     ],
     // B9
@@ -143,8 +152,10 @@ class StandardTables {
       [6, 8, 523], //
       [7, 9, 779], //
       [6, 11, 1291], //
-      [9, 32, -32, 999], /* low */
-      [9, 32, 3339], /* high */
+      [9, 32, -32, 999],
+      /* low */
+      [9, 32, 3339],
+      /* high */
       [2, -1, 0] /* OOB */
     ],
     // B10
@@ -167,8 +178,10 @@ class StandardTables {
       [6, 9, 582], //
       [6, 10, 1094], //
       [7, 11, 2118], //
-      [8, 32, -22, 999], /* low */
-      [8, 32, 4166], /* high */
+      [8, 32, -22, 999],
+      /* low */
+      [8, 32, 4166],
+      /* high */
       [2, -1, 0] /* OOB */
     ],
     // B11
@@ -240,7 +253,8 @@ class StandardTables {
       [5, 1, 3], //
       [6, 2, 5], //
       [7, 4, 9], //
-      [7, 32, -25, 999], /* low */
+      [7, 32, -25, 999],
+      /* low */
       [7, 32, 25] /* high */
     ]
   ];

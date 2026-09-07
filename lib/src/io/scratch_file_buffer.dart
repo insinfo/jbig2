@@ -29,7 +29,7 @@ class ScratchFileBuffer extends RandomAccessRead implements RandomAccess {
     if (_pageCount + 1 >= _pageIndexes.length) {
       var newLength = _pageIndexes.length * 2;
       if (newLength <= _pageIndexes.length) {
-        newLength = _pageIndexes.length == 0 ? 16 : _pageIndexes.length * 2;
+        newLength = _pageIndexes.isEmpty ? 16 : _pageIndexes.length * 2;
       }
       final newIndexes = List<int>.filled(newLength, -1);
       for (var i = 0; i < _pageCount; i++) {
@@ -194,7 +194,8 @@ class ScratchFileBuffer extends RandomAccessRead implements RandomAccess {
 
     while (remain > 0) {
       if (!_ensureAvailableBytes(false)) {
-        throw IOException('Unexpectedly no bytes available for read in buffer.');
+        throw IOException(
+            'Unexpectedly no bytes available for read in buffer.');
       }
       final available = (_pageSize - _positionInPage);
       final toRead = remain < available ? remain : available;
@@ -256,6 +257,7 @@ class ScratchFileBuffer extends RandomAccessRead implements RandomAccess {
 
   @override
   RandomAccessReadView createView(int startPosition, int streamLength) {
-    throw UnsupportedError('${runtimeType.toString()}.createView is not supported.');
+    throw UnsupportedError(
+        '${runtimeType.toString()}.createView is not supported.');
   }
 }

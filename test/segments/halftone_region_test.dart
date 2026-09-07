@@ -15,16 +15,16 @@ void main() {
     final rar = RandomAccessReadBuffer.fromBytes(bytes);
     // Seventh Segment (number 6)
     final sis = SubInputStream(rar, 302, 87);
-    
+
     final hr = HalftoneRegion(sis);
     hr.init(null, sis);
-    
+
     expect(hr.isMMREncoded, true);
     expect(hr.hTemplate, 0);
     expect(hr.isHSkipEnabled, false);
     expect(hr.combinationOperator, CombinationOperator.OR);
     expect(hr.hDefaultPixel, 0);
-    
+
     expect(hr.hGridWidth, 8);
     expect(hr.hGridHeight, 9);
     expect(hr.hGridX, 0);

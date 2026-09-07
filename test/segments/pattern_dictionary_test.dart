@@ -14,10 +14,10 @@ void main() {
     final rar = RandomAccessReadBuffer.fromBytes(bytes);
     // Sixth Segment (number 5)
     final sis = SubInputStream(rar, 245, 45);
-    
+
     final pd = PatternDictionary();
     pd.init(null, sis);
-    
+
     expect(pd.isMMREncoded, true);
     expect(pd.hdTemplate, 0);
     expect(pd.hdpWidth, 4);

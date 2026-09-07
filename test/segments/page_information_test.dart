@@ -13,12 +13,12 @@ void main() {
     }
     final bytes = file.readAsBytesSync();
     final rar = RandomAccessReadBuffer.fromBytes(bytes);
-    
+
     // Second Segment (number 1)
     final sis = SubInputStream(rar, 59, 19);
     final pi = PageInformation();
     pi.init(null, sis);
-    
+
     expect(pi.getWidth(), 64);
     expect(pi.getHeight(), 56);
     expect(pi.getResolutionX(), 0);

@@ -6,19 +6,19 @@ import 'package:jbig2/src/util/combination_operator.dart';
 class PageInformation implements SegmentData {
   late SubInputStream subInputStream;
 
-  /** Page bitmap width, four byte, 7.4.8.1 */
+  /// Page bitmap width, four byte, 7.4.8.1
   int bitmapWidth = 0;
 
-  /** Page bitmap height, four byte, 7.4.8.2 */
+  /// Page bitmap height, four byte, 7.4.8.2
   int bitmapHeight = 0;
 
-  /** Page X resolution, four byte, 7.4.8.3 */
+  /// Page X resolution, four byte, 7.4.8.3
   int resolutionX = 0;
 
-  /** Page Y resolution, four byte, 7.4.8.4 */
+  /// Page Y resolution, four byte, 7.4.8.4
   int resolutionY = 0;
 
-  /** Page segment flags, one byte, 7.4.8.5 */
+  /// Page segment flags, one byte, 7.4.8.5
   bool combinationOperatorOverrideAllowed = false;
   CombinationOperator combinationOperator = CombinationOperator.OR; // Default?
   bool requiresAuxiliaryBuffer = false;
@@ -26,7 +26,7 @@ class PageInformation implements SegmentData {
   bool mightContainRefinements = false;
   bool isLossless = false;
 
-  /** Page striping information, two byte, 7.4.8.6 */
+  /// Page striping information, two byte, 7.4.8.6
   bool isStriped = false;
   int maxStripeSize = 0;
 

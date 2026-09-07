@@ -27,7 +27,8 @@ class RandomAccessReadBufferedFile extends RandomAccessRead {
 
   final Map<int, RandomAccessReadBufferedFile> _rafCopies = {};
   Uint8List? _lastRemovedCachePage;
-  final LinkedHashMap<int, Uint8List> _pageCache = LinkedHashMap<int, Uint8List>();
+  final LinkedHashMap<int, Uint8List> _pageCache =
+      LinkedHashMap<int, Uint8List>();
 
   final String _path;
   final RandomAccessFile _raf;
