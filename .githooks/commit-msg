@@ -1,0 +1,29 @@
+#!/bin/sh
+#
+# Rejeita trailers de autoria de agentes de IA nas mensagens de commit.
+#
+# O histórico registra quem responde pelo código. Creditar um agente como
+# co-autor confunde essa responsabilidade e polui o log com ruído que não
+# ajuda ninguém a entender a mudança.
+#
+# Ativação (necessária uma vez por clone, pois hooks não são clonados):
+#
+#     git config core.hooksPath .githooks
+
+msg_file="$1"
+
+# Ignora as linhas de comentário que o git anexa ao editor.
+body=$(grep -v '^#' "$msg_file")
+
+offenders=$(printf '%s\n' "$body" | grep -niE \
+  '^[[:space:]]*(co-authored-by|assisted-by|co-developed-by|signed-off-by)[[:space:]]*:.*(claude|anthropic|opus|sonnet|copilot|chatgpt|openai|gemini|cursor|codeium)|generated with[[:space:]]*\[?(claude|copilot|chatgpt|cursor)|🤖')
+
+if [ -n "$offenders" ]; then
+  echo "commit-msg: a mensagem contém trailer de autoria de IA:" >&2
+  echo "$offenders" | sed 's/^/  /' >&2
+  echo "" >&2
+  echo "Remova a(s) linha(s) e refaça o commit." >&2
+  exit 1
+fi
+
+exit 0
