@@ -208,7 +208,10 @@ class JBIG2Page {
       SegmentHeader? pageInfoSeg = getPageInformationSegment();
       if (pageInfoSeg != null) {
         PageInformation pi = pageInfoSeg.getSegmentData() as PageInformation;
-        if (pi.getHeight() == 0xffffffff) {
+        // Na referência este teste é `== 0xffffffff`, porque lá o literal é um
+        // `int` de 32 bits e vale -1. Em Dart o mesmo literal vale
+        // 4294967295, então a comparação tem de ser explícita.
+        if (pi.getHeight() == -1) {
           getBitmap();
         } else {
           finalHeight = pi.getHeight();

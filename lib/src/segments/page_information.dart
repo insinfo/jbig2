@@ -76,7 +76,9 @@ class PageInformation implements SegmentData {
   }
 
   void checkInput() {
-    if (bitmapHeight == 0xffffffff) {
+    // -1 é a altura desconhecida de uma página em faixas; veja
+    // [readWidthAndHeight].
+    if (bitmapHeight == -1) {
       if (!isStriped) {
         // log.info("isStriped should contaion the value true");
         // print("isStriped should contaion the value true");
@@ -136,8 +138,14 @@ class PageInformation implements SegmentData {
   }
 
   void readWidthAndHeight() {
-    bitmapWidth = subInputStream.readBits(32); // & 0xffffffff;
-    bitmapHeight = subInputStream.readBits(32); // & 0xffffffff;
+    // Lidos como inteiros de 32 bits COM sinal, como faz a implementação de
+    // referência com o seu `int`. Importa para a altura: uma página em faixas
+    // declara 0xFFFFFFFF para dizer "altura ainda desconhecida, definida pelos
+    // segmentos de fim de faixa", e isso precisa chegar como -1. Sem o sinal,
+    // o valor virava 4294967295, a página não era reconhecida como em faixas e
+    // a composição tentava alocar o bitmap inteiro — quase um terabyte.
+    bitmapWidth = subInputStream.readBits(32).toSigned(32);
+    bitmapHeight = subInputStream.readBits(32).toSigned(32);
   }
 
   int getWidth() {
