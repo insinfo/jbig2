@@ -3,6 +3,8 @@ import 'dart:typed_data';
 /// Segment type numbers of ITU-T T.88 clause 7.3, limited to the ones this
 /// package writes.
 abstract final class Jbig2SegmentType {
+  static const int symbolDictionary = 0;
+  static const int immediateLosslessTextRegion = 7;
   static const int immediateGenericRegion = 38;
   static const int immediateLosslessGenericRegion = 39;
   static const int pageInformation = 48;
@@ -159,6 +161,48 @@ class Jbig2Writer {
       body.addByte(atY[i] & 0xff);
     }
 
+    body.add(codeword);
+    return body.takeBytes();
+  }
+
+  /// Monta o cabeçalho de um dicionário aritmético sem refinamento.
+  static Uint8List symbolDictionary({
+    required int exportedSymbols,
+    required int newSymbols,
+    required Uint8List codeword,
+    List<int> atX = const [3, -3, 2, -2],
+    List<int> atY = const [-1, -1, -2, -2],
+  }) {
+    final body = BytesBuilder();
+    // SDHUFF=0, SDREFAGG=0, templates e retenção de contextos zero.
+    body.add([0, 0]);
+    for (var i = 0; i < 4; i++) {
+      body.addByte(atX[i] & 0xff);
+      body.addByte(atY[i] & 0xff);
+    }
+    _writeUint32(body, exportedSymbols);
+    _writeUint32(body, newSymbols);
+    body.add(codeword);
+    return body.takeBytes();
+  }
+
+  /// Monta uma região de texto aritmética sem refinamento.
+  static Uint8List textRegion({
+    required int width,
+    required int height,
+    required int instances,
+    required Uint8List codeword,
+    int x = 0,
+    int y = 0,
+  }) {
+    final body = BytesBuilder();
+    _writeUint32(body, width);
+    _writeUint32(body, height);
+    _writeUint32(body, x);
+    _writeUint32(body, y);
+    body.addByte(0); // combinação OR
+    body.add([0, 0]); // flags da região de texto
+    _writeUint32(body, instances);
     body.add(codeword);
     return body.takeBytes();
   }

@@ -51,6 +51,44 @@ void _roundTrip(Jbig2Image source, {bool typicalPrediction = true}) {
 }
 
 void main() {
+  group('symbol dictionary round trip', () {
+    test('deduplicates and places repeated glyphs losslessly', () {
+      final rows = <String>[];
+      for (var line = 0; line < 12; line++) {
+        rows.add('..##....##....##....##'.padRight(64, '.'));
+        rows.add('.####..####..####..####'.padRight(64, '.'));
+        rows.add('##..####..####..####..##'.padRight(64, '.'));
+        rows.add('.####..####..####..####'.padRight(64, '.'));
+        rows.add('..##....##....##....##'.padRight(64, '.'));
+        rows.add('.' * 64);
+      }
+      final source = _image(rows);
+      const options =
+          Jbig2EncodeOptions(mode: Jbig2EncodeMode.symbolDictionary);
+      final embedded = encodeJbig2Embedded(source, options: options);
+      _expectSamePixels(decodeJbig2Embedded(embedded), source);
+      final file = encodeJbig2File(source, options: options);
+      _expectSamePixels(decodeJbig2(file), source);
+    });
+
+    test('auto keeps the smaller representation', () {
+      final source = _image(List.generate(
+          80,
+          (y) => y % 8 < 5
+              ? '..###.....###.....###.....###'.padRight(64, '.')
+              : '.' * 64));
+      final automatic = encodeJbig2Embedded(source);
+      final generic = encodeJbig2Embedded(source,
+          options:
+              const Jbig2EncodeOptions(mode: Jbig2EncodeMode.genericRegion));
+      final symbolic = encodeJbig2Embedded(source,
+          options:
+              const Jbig2EncodeOptions(mode: Jbig2EncodeMode.symbolDictionary));
+      expect(automatic.length, min(generic.length, symbolic.length));
+      _expectSamePixels(decodeJbig2Embedded(automatic), source);
+    });
+  });
+
   group('generic region round trip', () {
     test('a single black pixel', () {
       _roundTrip(_image(['#']));

@@ -89,21 +89,30 @@ final data = encodeJbig2Packed(
 );
 ```
 
-The encoder writes a generic region with template 0, the nominal adaptive
-pixels and typical prediction, which is what general purpose encoders emit for
-scanned pages. Encoding is always lossless: the round-trip tests decode every
-fixture back and compare it pixel by pixel.
+The encoder compares a generic region with a symbol dictionary and keeps the
+smaller representation. Symbol mode extracts 8-connected components,
+deduplicates identical glyph bitmaps, writes them into an arithmetic symbol
+dictionary, and places every occurrence through a text region. Encoding is
+always lossless: round-trip tests decode both containers and compare them pixel
+by pixel.
+
+```dart
+final symbols = encodeJbig2Embedded(image,
+  options: const Jbig2EncodeOptions(mode: Jbig2EncodeMode.symbolDictionary),
+);
+```
+
+Generic regions use template 0, nominal adaptive pixels and typical
+prediction. Force `Jbig2EncodeMode.genericRegion` when symbol extraction is not
+appropriate for the input.
 
 `typicalPrediction` costs one arithmetic decision for a row identical to the
 one above instead of a whole row of pixels. Leave it on unless you are
 measuring: scanned pages are mostly white, and the margins alone pay for it.
 
-### Not produced
-
-Symbol dictionaries and refinement regions, which pay off only on text with
-many repeated glyphs, are **decoded but not encoded**. An encoder that builds a
-symbol dictionary beats generic region coding on text pages, and is the next
-thing worth adding.
+Refinement aggregation is decoded but not yet emitted. Exact bitmap symbols do
+not need refinement and remain lossless; refinement can improve compression of
+similar, non-identical scanned glyphs.
 
 ## Development
 
@@ -130,8 +139,8 @@ ImageIO**, formerly levigo JBIG2-ImageIO:
 
 <https://github.com/apache/pdfbox-jbig2>
 
-The MQ arithmetic encoder, the generic region encoder, the segment writer and
-the public API are new work written for this package.
+The MQ and arithmetic integer encoders, generic region and symbol dictionary
+encoders, segment writer and public API are new work written for this package.
 
 The whole package is released under the **Apache License 2.0**, the licence of
 the code it derives from. See [LICENSE](LICENSE) and [NOTICE](NOTICE).

@@ -2,10 +2,25 @@ import 'dart:typed_data';
 
 import '../encoder/generic_region_encoder.dart';
 import '../encoder/jbig2_writer.dart';
+import '../encoder/symbol_dictionary_encoder.dart';
+import '../encoder/symbol_extractor.dart';
 import 'jbig2_image.dart';
+
+enum Jbig2EncodeMode {
+  /// Compara os dois resultados e conserva o menor.
+  auto,
+
+  /// Codifica a página como uma região genérica.
+  genericRegion,
+
+  /// Extrai componentes, deduplica símbolos e os posiciona numa região texto.
+  symbolDictionary,
+}
 
 /// How to encode a bi-level image.
 class Jbig2EncodeOptions {
+  final Jbig2EncodeMode mode;
+
   /// Emit typical prediction, so a row identical to the one above costs one
   /// decision instead of a whole row of pixels. Worth keeping on: scanned
   /// pages are mostly white, and the margins alone pay for it.
@@ -19,6 +34,7 @@ class Jbig2EncodeOptions {
   final int yResolution;
 
   const Jbig2EncodeOptions({
+    this.mode = Jbig2EncodeMode.auto,
     this.typicalPrediction = true,
     this.xResolution = 0,
     this.yResolution = 0,
@@ -28,9 +44,10 @@ class Jbig2EncodeOptions {
 /// Encodes [image] as the embedded segment stream PDF's `/JBIG2Decode` filter
 /// expects.
 ///
-/// The result is a page information segment followed by one immediate lossless
-/// generic region, with no file header and no end-of-file segment, which is
-/// what a PDF image stream carries. The encoding is always lossless.
+/// In [Jbig2EncodeMode.auto], compares a generic region with a symbol
+/// dictionary plus text region and returns the smaller stream. There is no
+/// file header or end-of-file segment, which is what a PDF image stream
+/// carries. Encoding is always lossless.
 ///
 /// ```dart
 /// final data = encodeJbig2Embedded(image);
@@ -41,8 +58,24 @@ Uint8List encodeJbig2Embedded(
   Jbig2Image image, {
   Jbig2EncodeOptions options = const Jbig2EncodeOptions(),
 }) {
+  if (options.mode != Jbig2EncodeMode.genericRegion) {
+    final symbolic = _encodeSymbols(image, options, false);
+    if (symbolic != null && options.mode == Jbig2EncodeMode.symbolDictionary) {
+      return symbolic;
+    }
+    if (symbolic != null) {
+      final generic = _encodeGeneric(image, options, false);
+      return symbolic.length < generic.length ? symbolic : generic;
+    }
+  }
+  return _encodeGeneric(image, options, false);
+}
+
+Uint8List _encodeGeneric(
+    Jbig2Image image, Jbig2EncodeOptions options, bool asFile) {
   final codeword = _codeword(image, options);
   final writer = Jbig2Writer();
+  if (asFile) writer.writeFileHeader(pageCount: 1);
 
   writer.writeSegment(
     number: 0,
@@ -66,6 +99,18 @@ Uint8List encodeJbig2Embedded(
       typicalPrediction: options.typicalPrediction,
     ),
   );
+  if (asFile) {
+    writer.writeSegment(
+        number: 2,
+        type: Jbig2SegmentType.endOfPage,
+        page: 1,
+        data: Uint8List(0));
+    writer.writeSegment(
+        number: 3,
+        type: Jbig2SegmentType.endOfFile,
+        page: 0,
+        data: Uint8List(0));
+  }
   return writer.takeBytes();
 }
 
@@ -75,43 +120,69 @@ Uint8List encodeJbig2File(
   Jbig2Image image, {
   Jbig2EncodeOptions options = const Jbig2EncodeOptions(),
 }) {
-  final codeword = _codeword(image, options);
-  final writer = Jbig2Writer()..writeFileHeader(pageCount: 1);
+  if (options.mode != Jbig2EncodeMode.genericRegion) {
+    final symbolic = _encodeSymbols(image, options, true);
+    if (symbolic != null && options.mode == Jbig2EncodeMode.symbolDictionary) {
+      return symbolic;
+    }
+    if (symbolic != null) {
+      final generic = _encodeGeneric(image, options, true);
+      return symbolic.length < generic.length ? symbolic : generic;
+    }
+  }
+  return _encodeGeneric(image, options, true);
+}
 
+Uint8List? _encodeSymbols(
+    Jbig2Image image, Jbig2EncodeOptions options, bool asFile) {
+  if (image.width <= 0 || image.height <= 0) {
+    throw ArgumentError('An image must have a positive extent.');
+  }
+  final extracted = SymbolExtractor(image.toBitmap()).extract();
+  if (extracted.dictionary.isEmpty) return null;
+  final writer = Jbig2Writer();
+  if (asFile) writer.writeFileHeader(pageCount: 1);
   writer.writeSegment(
-    number: 0,
-    type: Jbig2SegmentType.pageInformation,
-    page: 1,
-    data: Jbig2Writer.pageInformation(
-      width: image.width,
-      height: image.height,
-      xResolution: options.xResolution,
-      yResolution: options.yResolution,
-    ),
-  );
+      number: 0,
+      type: Jbig2SegmentType.pageInformation,
+      page: 1,
+      data: Jbig2Writer.pageInformation(
+          width: image.width,
+          height: image.height,
+          xResolution: options.xResolution,
+          yResolution: options.yResolution));
   writer.writeSegment(
-    number: 1,
-    type: Jbig2SegmentType.immediateLosslessGenericRegion,
-    page: 1,
-    data: Jbig2Writer.genericRegion(
-      width: image.width,
-      height: image.height,
-      codeword: codeword,
-      typicalPrediction: options.typicalPrediction,
-    ),
-  );
+      number: 1,
+      type: Jbig2SegmentType.symbolDictionary,
+      page: 1,
+      data: Jbig2Writer.symbolDictionary(
+          exportedSymbols: extracted.dictionary.length,
+          newSymbols: extracted.dictionary.length,
+          codeword:
+              SymbolDictionaryEncoder.encodeDictionary(extracted.dictionary)));
   writer.writeSegment(
-    number: 2,
-    type: Jbig2SegmentType.endOfPage,
-    page: 1,
-    data: Uint8List(0),
-  );
-  writer.writeSegment(
-    number: 3,
-    type: Jbig2SegmentType.endOfFile,
-    page: 0,
-    data: Uint8List(0),
-  );
+      number: 2,
+      type: Jbig2SegmentType.immediateLosslessTextRegion,
+      page: 1,
+      referredTo: const [1],
+      data: Jbig2Writer.textRegion(
+          width: image.width,
+          height: image.height,
+          instances: extracted.instances.length,
+          codeword: SymbolDictionaryEncoder.encodeTextRegion(
+              extracted.dictionary, extracted.instances)));
+  if (asFile) {
+    writer.writeSegment(
+        number: 3,
+        type: Jbig2SegmentType.endOfPage,
+        page: 1,
+        data: Uint8List(0));
+    writer.writeSegment(
+        number: 4,
+        type: Jbig2SegmentType.endOfFile,
+        page: 0,
+        data: Uint8List(0));
+  }
   return writer.takeBytes();
 }
 

@@ -34,6 +34,12 @@ class GenericRegionEncoder {
   Uint8List encode() {
     final encoder = MqEncoder();
     final cx = CX(1 << 16, 0);
+    encodeInto(encoder, cx);
+    return encoder.flush();
+  }
+
+  /// Acrescenta as decisões ao fluxo aritmético compartilhado por um segmento.
+  void encodeInto(MqEncoder encoder, CX cx) {
     final width = bitmap.width;
     final height = bitmap.height;
     final rowStride = bitmap.rowStride;
@@ -51,7 +57,6 @@ class GenericRegionEncoder {
       }
       _encodeLine(encoder, cx, line, width, rowStride, paddedWidth);
     }
-    return encoder.flush();
   }
 
   bool _rowsMatch(int a, int b) {
