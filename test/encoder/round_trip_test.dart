@@ -52,6 +52,41 @@ void _roundTrip(Jbig2Image source, {bool typicalPrediction = true}) {
 
 void main() {
   group('symbol dictionary round trip', () {
+    test('automatically emits refinement aggregation when it is smaller', () {
+      const glyphSize = 64;
+      const glyphs = 16;
+      const gap = 2;
+      final rows = List.generate(glyphSize, (y) {
+        final row = StringBuffer();
+        for (var glyph = 0; glyph < glyphs; glyph++) {
+          for (var x = 0; x < glyphSize; x++) {
+            final frame =
+                y == 0 || y == glyphSize - 1 || x == 0 || x == glyphSize - 1;
+            final texture = y.isEven ||
+                x == 0 ||
+                x == glyphSize - 1 ||
+                (x * 17 + y * 31) % 11 < 5;
+            final variantX = 2 + (glyph % 8) * 4;
+            final variantY = 1 + (glyph ~/ 8) * 2;
+            final changed = x == variantX && y == variantY;
+            row.write((frame || texture) != changed ? '#' : '.');
+          }
+          row.write('.' * gap);
+        }
+        return row.toString();
+      });
+      final source = _image(rows);
+      const refined = Jbig2EncodeOptions(
+          mode: Jbig2EncodeMode.symbolDictionary, refinementAggregation: true);
+      const direct = Jbig2EncodeOptions(
+          mode: Jbig2EncodeMode.symbolDictionary, refinementAggregation: false);
+      final encoded = encodeJbig2Embedded(source, options: refined);
+      final directBytes = encodeJbig2Embedded(source, options: direct);
+
+      expect(encoded.length, lessThan(directBytes.length));
+      _expectSamePixels(decodeJbig2Embedded(encoded), source);
+    });
+
     test('shares a PDF JBIG2Globals stream across embedded images', () {
       final glyph = [
         '..##......##....',

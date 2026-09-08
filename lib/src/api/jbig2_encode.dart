@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'dart:typed_data';
 
 import '../bitmap.dart';
@@ -34,11 +35,16 @@ class Jbig2EncodeOptions {
   /// Vertical resolution in pixels per metre.
   final int yResolution;
 
+  /// Allows near-identical symbols to be emitted through refinement
+  /// aggregation when that makes the complete stream smaller.
+  final bool refinementAggregation;
+
   const Jbig2EncodeOptions({
     this.mode = Jbig2EncodeMode.auto,
     this.typicalPrediction = true,
     this.xResolution = 0,
     this.yResolution = 0,
+    this.refinementAggregation = true,
   });
 }
 
@@ -462,6 +468,14 @@ Uint8List? _encodeSymbols(
   }
   final extracted = SymbolExtractor(image.toBitmap()).extract();
   if (extracted.dictionary.isEmpty) return null;
+  final exact = _encodeExtractedSymbols(image, options, asFile, extracted);
+  if (!options.refinementAggregation) return exact;
+  final refined = _encodeRefinedSymbols(image, options, asFile, extracted);
+  return refined != null && refined.length < exact.length ? refined : exact;
+}
+
+Uint8List _encodeExtractedSymbols(Jbig2Image image, Jbig2EncodeOptions options,
+    bool asFile, ExtractedSymbols extracted) {
   final writer = Jbig2Writer();
   if (asFile) writer.writeFileHeader(pageCount: 1);
   writer.writeSegment(
@@ -506,6 +520,140 @@ Uint8List? _encodeSymbols(
         data: Uint8List(0));
   }
   return writer.takeBytes();
+}
+
+Uint8List? _encodeRefinedSymbols(Jbig2Image image, Jbig2EncodeOptions options,
+    bool asFile, ExtractedSymbols extracted) {
+  final plan = _planRefinements(extracted.dictionary);
+  if (plan.refined.isEmpty) return null;
+  final writer = Jbig2Writer();
+  if (asFile) writer.writeFileHeader(pageCount: 1);
+  writer.writeSegment(
+      number: 0,
+      type: Jbig2SegmentType.pageInformation,
+      page: 1,
+      data: Jbig2Writer.pageInformation(
+          width: image.width,
+          height: image.height,
+          xResolution: options.xResolution,
+          yResolution: options.yResolution));
+  writer.writeSegment(
+      number: 1,
+      type: Jbig2SegmentType.symbolDictionary,
+      page: 1,
+      data: Jbig2Writer.symbolDictionary(
+          exportedSymbols: plan.base.length,
+          newSymbols: plan.base.length,
+          codeword: SymbolDictionaryEncoder.encodeDictionary(plan.base)));
+  writer.writeSegment(
+      number: 2,
+      type: Jbig2SegmentType.symbolDictionary,
+      page: 1,
+      referredTo: const <int>[1],
+      data: Jbig2Writer.refinementSymbolDictionary(
+          exportedSymbols: plan.refined.length,
+          newSymbols: plan.refined.length,
+          codeword: SymbolDictionaryEncoder.encodeRefinementDictionary(
+              plan.base, plan.refined)));
+  final symbols = <Bitmap>[
+    ...plan.base,
+    ...plan.refined.map((symbol) => symbol.bitmap)
+  ];
+  final instances = <ExtractedSymbolInstance>[
+    for (final instance in extracted.instances)
+      ExtractedSymbolInstance(
+          plan.remap[instance.symbol], instance.x, instance.y)
+  ];
+  writer.writeSegment(
+      number: 3,
+      type: Jbig2SegmentType.immediateLosslessTextRegion,
+      page: 1,
+      referredTo: const <int>[1, 2],
+      data: Jbig2Writer.textRegion(
+          width: image.width,
+          height: image.height,
+          instances: instances.length,
+          codeword:
+              SymbolDictionaryEncoder.encodeTextRegion(symbols, instances)));
+  if (asFile) {
+    writer.writeSegment(
+        number: 4,
+        type: Jbig2SegmentType.endOfPage,
+        page: 1,
+        data: Uint8List(0));
+    writer.writeSegment(
+        number: 5,
+        type: Jbig2SegmentType.endOfFile,
+        page: 0,
+        data: Uint8List(0));
+  }
+  return writer.takeBytes();
+}
+
+class _RefinementPlan {
+  final List<Bitmap> base;
+  final List<RefinedSymbol> refined;
+  final List<int> remap;
+  const _RefinementPlan(this.base, this.refined, this.remap);
+}
+
+_RefinementPlan _planRefinements(List<Bitmap> symbols) {
+  final base = <Bitmap>[];
+  final candidatesBySize = <String, List<int>>{};
+  final refinedSource = <({Bitmap bitmap, int reference, int original})>[];
+  final baseOriginals = <int>[];
+  for (var original = 0; original < symbols.length; original++) {
+    final symbol = symbols[original];
+    var best = -1;
+    var bestDistance = symbol.width * symbol.height + 1;
+    final maximumDistance = math.max(1, symbol.width * symbol.height ~/ 32);
+    final sizeKey = '${symbol.width}x${symbol.height}';
+    final sameSize = candidatesBySize[sizeKey] ?? const <int>[];
+    // Bound clustering work on noisy scans with thousands of unique blobs.
+    // Recent representatives are the most useful because extraction follows
+    // reading order and nearby glyphs usually share the same face and size.
+    final firstCandidate = math.max(0, sameSize.length - 64);
+    for (var at = firstCandidate; at < sameSize.length; at++) {
+      final candidate = sameSize[at];
+      final distance = _pixelDistance(
+          base[candidate], symbol, math.min(maximumDistance, bestDistance - 1));
+      if (distance <= maximumDistance && distance < bestDistance) {
+        best = candidate;
+        bestDistance = distance;
+      }
+    }
+    if (best < 0) {
+      baseOriginals.add(original);
+      base.add(symbol);
+      candidatesBySize.putIfAbsent(sizeKey, () => <int>[]).add(base.length - 1);
+    } else {
+      refinedSource.add((bitmap: symbol, reference: best, original: original));
+    }
+  }
+  final remap = List<int>.filled(symbols.length, 0);
+  for (var index = 0; index < baseOriginals.length; index++) {
+    remap[baseOriginals[index]] = index;
+  }
+  final refined = <RefinedSymbol>[];
+  for (var index = 0; index < refinedSource.length; index++) {
+    final source = refinedSource[index];
+    remap[source.original] = base.length + index;
+    refined.add(RefinedSymbol(source.bitmap, source.reference));
+  }
+  return _RefinementPlan(base, refined, remap);
+}
+
+int _pixelDistance(Bitmap a, Bitmap b, int limit) {
+  var distance = 0;
+  for (var index = 0; index < a.bitmap.length; index++) {
+    var value = a.bitmap[index] ^ b.bitmap[index];
+    while (value != 0) {
+      value &= value - 1;
+      distance++;
+      if (distance > limit) return distance;
+    }
+  }
+  return distance;
 }
 
 /// Encodes packed rows straight from a PDF 1-bit image.

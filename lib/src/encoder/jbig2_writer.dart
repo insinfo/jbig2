@@ -186,6 +186,27 @@ class Jbig2Writer {
     return body.takeBytes();
   }
 
+  /// Builds an arithmetic symbol dictionary whose new symbols use refinement.
+  static Uint8List refinementSymbolDictionary({
+    required int exportedSymbols,
+    required int newSymbols,
+    required Uint8List codeword,
+    int atX = 3,
+    int atY = -1,
+  }) {
+    final body = BytesBuilder();
+    // SDRTEMPLATE=1, SDTEMPLATE=1, SDREFAGG=1, SDHUFF=0.
+    body.add([0x14, 0x02]);
+    // SDTEMPLATE still requires one generic AT pair, although refined symbols
+    // do not consume it. SDRTEMPLATE=1 requires no refinement AT pair.
+    body.addByte(atX & 0xff);
+    body.addByte(atY & 0xff);
+    _writeUint32(body, exportedSymbols);
+    _writeUint32(body, newSymbols);
+    body.add(codeword);
+    return body.takeBytes();
+  }
+
   /// Monta uma região de texto aritmética sem refinamento.
   static Uint8List textRegion({
     required int width,

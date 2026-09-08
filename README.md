@@ -132,10 +132,11 @@ appropriate for the input.
 one above instead of a whole row of pixels. Leave it on unless you are
 measuring: scanned pages are mostly white, and the margins alone pay for it.
 
-Refinement aggregation is decoded but not yet emitted. Exact bitmap symbols do
-not need refinement and remain lossless; refinement can improve compression of
-similar, non-identical scanned glyphs. Multi-page files already deduplicate
-exact symbols through a page-association-zero global dictionary.
+Refinement aggregation is decoded and the single-image encoder emits a base
+dictionary plus lossless one-instance refinements when that beats direct symbol
+coding. Exact bitmap symbols still deduplicate normally. Multi-page files
+deduplicate exact symbols through a page-association-zero global dictionary;
+clustering non-identical symbols across pages remains partial.
 
 ## Development
 
