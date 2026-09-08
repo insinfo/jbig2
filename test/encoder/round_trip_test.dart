@@ -50,32 +50,35 @@ void _roundTrip(Jbig2Image source, {bool typicalPrediction = true}) {
   _expectSamePixels(decodeJbig2(file), source);
 }
 
+Jbig2Image _variantGlyphPage(int firstGlyph, int glyphs) {
+  const glyphSize = 64;
+  const gap = 2;
+  return _image(List.generate(glyphSize, (y) {
+    final row = StringBuffer();
+    for (var local = 0; local < glyphs; local++) {
+      final glyph = firstGlyph + local;
+      for (var x = 0; x < glyphSize; x++) {
+        final frame =
+            y == 0 || y == glyphSize - 1 || x == 0 || x == glyphSize - 1;
+        final texture = y.isEven ||
+            x == 0 ||
+            x == glyphSize - 1 ||
+            (x * 17 + y * 31) % 11 < 5;
+        final variantX = 2 + (glyph % 8) * 4;
+        final variantY = 1 + (glyph ~/ 8) * 2;
+        final changed = x == variantX && y == variantY;
+        row.write((frame || texture) != changed ? '#' : '.');
+      }
+      row.write('.' * gap);
+    }
+    return row.toString();
+  }));
+}
+
 void main() {
   group('symbol dictionary round trip', () {
     test('automatically emits refinement aggregation when it is smaller', () {
-      const glyphSize = 64;
-      const glyphs = 16;
-      const gap = 2;
-      final rows = List.generate(glyphSize, (y) {
-        final row = StringBuffer();
-        for (var glyph = 0; glyph < glyphs; glyph++) {
-          for (var x = 0; x < glyphSize; x++) {
-            final frame =
-                y == 0 || y == glyphSize - 1 || x == 0 || x == glyphSize - 1;
-            final texture = y.isEven ||
-                x == 0 ||
-                x == glyphSize - 1 ||
-                (x * 17 + y * 31) % 11 < 5;
-            final variantX = 2 + (glyph % 8) * 4;
-            final variantY = 1 + (glyph ~/ 8) * 2;
-            final changed = x == variantX && y == variantY;
-            row.write((frame || texture) != changed ? '#' : '.');
-          }
-          row.write('.' * gap);
-        }
-        return row.toString();
-      });
-      final source = _image(rows);
+      final source = _variantGlyphPage(0, 16);
       const refined = Jbig2EncodeOptions(
           mode: Jbig2EncodeMode.symbolDictionary, refinementAggregation: true);
       const direct = Jbig2EncodeOptions(
@@ -85,6 +88,41 @@ void main() {
 
       expect(encoded.length, lessThan(directBytes.length));
       _expectSamePixels(decodeJbig2Embedded(encoded), source);
+    });
+
+    test('shares refinement symbols across standalone pages', () {
+      final pages = [_variantGlyphPage(0, 8), _variantGlyphPage(8, 8)];
+      const refined = Jbig2EncodeOptions(
+          mode: Jbig2EncodeMode.symbolDictionary, refinementAggregation: true);
+      const direct = Jbig2EncodeOptions(
+          mode: Jbig2EncodeMode.symbolDictionary, refinementAggregation: false);
+
+      final encoded = encodeJbig2Pages(pages, options: refined);
+      final directBytes = encodeJbig2Pages(pages, options: direct);
+
+      expect(encoded.length, lessThan(directBytes.length));
+      for (var index = 0; index < pages.length; index++) {
+        _expectSamePixels(decodeJbig2(encoded, page: index + 1), pages[index]);
+      }
+    });
+
+    test('shares refinement symbols through PDF JBIG2Globals', () {
+      final pages = [_variantGlyphPage(0, 8), _variantGlyphPage(8, 8)];
+      const refined = Jbig2EncodeOptions(
+          mode: Jbig2EncodeMode.symbolDictionary, refinementAggregation: true);
+      const direct = Jbig2EncodeOptions(
+          mode: Jbig2EncodeMode.symbolDictionary, refinementAggregation: false);
+
+      final encoded = encodeJbig2EmbeddedPages(pages, options: refined);
+      final directBytes = encodeJbig2EmbeddedPages(pages, options: direct);
+
+      expect(encoded.totalLength, lessThan(directBytes.totalLength));
+      expect(encoded.usesGlobalDictionary, isTrue);
+      for (var index = 0; index < pages.length; index++) {
+        _expectSamePixels(
+            decodeJbig2Embedded(encoded.pages[index], globals: encoded.globals),
+            pages[index]);
+      }
     });
 
     test('shares a PDF JBIG2Globals stream across embedded images', () {

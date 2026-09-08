@@ -132,11 +132,11 @@ appropriate for the input.
 one above instead of a whole row of pixels. Leave it on unless you are
 measuring: scanned pages are mostly white, and the margins alone pay for it.
 
-Refinement aggregation is decoded and the single-image encoder emits a base
-dictionary plus lossless one-instance refinements when that beats direct symbol
-coding. Exact bitmap symbols still deduplicate normally. Multi-page files
-deduplicate exact symbols through a page-association-zero global dictionary;
-clustering non-identical symbols across pages remains partial.
+Refinement aggregation is decoded and the encoder emits a base dictionary plus
+lossless one-instance refinements when that beats direct symbol coding. Exact
+bitmap symbols still deduplicate normally. Standalone multi-page files and PDF
+`/JBIG2Globals` streams cluster non-identical symbols across pages and compare
+the complete refined and direct representations before keeping the smaller one.
 
 ## Development
 

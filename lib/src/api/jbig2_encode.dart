@@ -265,19 +265,58 @@ Uint8List _encodeSymbolPages(
       ]
   ];
 
+  final exact = _writeSymbolPages(images, options, ordered, remappedPages);
+  if (!options.refinementAggregation) return exact;
+  final plan = _planRefinements(ordered);
+  if (plan.refined.isEmpty) return exact;
+  final refinedSymbols = <Bitmap>[
+    ...plan.base,
+    ...plan.refined.map((symbol) => symbol.bitmap),
+  ];
+  final refinedPages = <List<ExtractedSymbolInstance>>[
+    for (final page in remappedPages)
+      <ExtractedSymbolInstance>[
+        for (final instance in page)
+          ExtractedSymbolInstance(
+              plan.remap[instance.symbol], instance.x, instance.y),
+      ],
+  ];
+  final refined = _writeSymbolPages(
+      images, options, refinedSymbols, refinedPages,
+      refinementPlan: plan);
+  return refined.length < exact.length ? refined : exact;
+}
+
+Uint8List _writeSymbolPages(List<Jbig2Image> images, Jbig2EncodeOptions options,
+    List<Bitmap> symbols, List<List<ExtractedSymbolInstance>> pages,
+    {_RefinementPlan? refinementPlan}) {
   final writer = Jbig2Writer()..writeFileHeader(pageCount: images.length);
   var segment = 0;
-  int? dictionarySegment;
-  if (ordered.isNotEmpty) {
-    dictionarySegment = segment++;
+  final dictionarySegments = <int>[];
+  if (symbols.isNotEmpty) {
+    final base = refinementPlan?.base ?? symbols;
+    dictionarySegments.add(segment++);
     writer.writeSegment(
-        number: dictionarySegment,
+        number: dictionarySegments.first,
         type: Jbig2SegmentType.symbolDictionary,
         page: 0,
         data: Jbig2Writer.symbolDictionary(
-            exportedSymbols: ordered.length,
-            newSymbols: ordered.length,
-            codeword: SymbolDictionaryEncoder.encodeDictionary(ordered)));
+            exportedSymbols: base.length,
+            newSymbols: base.length,
+            codeword: SymbolDictionaryEncoder.encodeDictionary(base)));
+    if (refinementPlan != null) {
+      dictionarySegments.add(segment++);
+      writer.writeSegment(
+          number: dictionarySegments.last,
+          type: Jbig2SegmentType.symbolDictionary,
+          page: 0,
+          referredTo: <int>[dictionarySegments.first],
+          data: Jbig2Writer.refinementSymbolDictionary(
+              exportedSymbols: refinementPlan.refined.length,
+              newSymbols: refinementPlan.refined.length,
+              codeword: SymbolDictionaryEncoder.encodeRefinementDictionary(
+                  refinementPlan.base, refinementPlan.refined)));
+    }
   }
   for (var index = 0; index < images.length; index++) {
     final image = images[index];
@@ -291,19 +330,19 @@ Uint8List _encodeSymbolPages(
             height: image.height,
             xResolution: options.xResolution,
             yResolution: options.yResolution));
-    final instances = remappedPages[index];
+    final instances = pages[index];
     if (instances.isNotEmpty) {
       writer.writeSegment(
           number: segment++,
           type: Jbig2SegmentType.immediateLosslessTextRegion,
           page: page,
-          referredTo: <int>[dictionarySegment!],
+          referredTo: dictionarySegments,
           data: Jbig2Writer.textRegion(
               width: image.width,
               height: image.height,
               instances: instances.length,
               codeword: SymbolDictionaryEncoder.encodeTextRegion(
-                  ordered, instances)));
+                  symbols, instances)));
     }
     writer.writeSegment(
         number: segment++,
@@ -413,16 +452,69 @@ Jbig2EmbeddedPages _encodeSharedEmbeddedSymbols(
     reorder[order[index]] = index;
   }
 
+  final remappedPages = <List<ExtractedSymbolInstance>>[
+    for (final page in pages)
+      <ExtractedSymbolInstance>[
+        for (final instance in page)
+          ExtractedSymbolInstance(
+              reorder[instance.symbol]!, instance.x, instance.y),
+      ],
+  ];
+  final exact =
+      _writeSharedEmbeddedSymbols(images, options, ordered, remappedPages);
+  if (!options.refinementAggregation) return exact;
+  final plan = _planRefinements(ordered);
+  if (plan.refined.isEmpty) return exact;
+  final refinedSymbols = <Bitmap>[
+    ...plan.base,
+    ...plan.refined.map((symbol) => symbol.bitmap),
+  ];
+  final refinedPages = <List<ExtractedSymbolInstance>>[
+    for (final page in remappedPages)
+      <ExtractedSymbolInstance>[
+        for (final instance in page)
+          ExtractedSymbolInstance(
+              plan.remap[instance.symbol], instance.x, instance.y),
+      ],
+  ];
+  final refined = _writeSharedEmbeddedSymbols(
+      images, options, refinedSymbols, refinedPages,
+      refinementPlan: plan);
+  return refined.totalLength < exact.totalLength ? refined : exact;
+}
+
+Jbig2EmbeddedPages _writeSharedEmbeddedSymbols(
+    List<Jbig2Image> images,
+    Jbig2EncodeOptions options,
+    List<Bitmap> symbols,
+    List<List<ExtractedSymbolInstance>> pages,
+    {_RefinementPlan? refinementPlan}) {
   final globalWriter = Jbig2Writer();
-  if (ordered.isNotEmpty) {
+  final dictionarySegments = <int>[];
+  if (symbols.isNotEmpty) {
+    final base = refinementPlan?.base ?? symbols;
+    dictionarySegments.add(0);
     globalWriter.writeSegment(
         number: 0,
         type: Jbig2SegmentType.symbolDictionary,
         page: 0,
         data: Jbig2Writer.symbolDictionary(
-            exportedSymbols: ordered.length,
-            newSymbols: ordered.length,
-            codeword: SymbolDictionaryEncoder.encodeDictionary(ordered)));
+            exportedSymbols: base.length,
+            newSymbols: base.length,
+            codeword: SymbolDictionaryEncoder.encodeDictionary(base)));
+    if (refinementPlan != null) {
+      dictionarySegments.add(1);
+      globalWriter.writeSegment(
+          number: 1,
+          type: Jbig2SegmentType.symbolDictionary,
+          page: 0,
+          referredTo: const <int>[0],
+          data: Jbig2Writer.refinementSymbolDictionary(
+              exportedSymbols: refinementPlan.refined.length,
+              newSymbols: refinementPlan.refined.length,
+              codeword: SymbolDictionaryEncoder.encodeRefinementDictionary(
+                  refinementPlan.base, refinementPlan.refined)));
+    }
   }
 
   final streams = <Uint8List>[];
@@ -430,7 +522,7 @@ Jbig2EmbeddedPages _encodeSharedEmbeddedSymbols(
     final image = images[index];
     final writer = Jbig2Writer();
     writer.writeSegment(
-        number: 1,
+        number: dictionarySegments.length,
         type: Jbig2SegmentType.pageInformation,
         page: 1,
         data: Jbig2Writer.pageInformation(
@@ -438,23 +530,19 @@ Jbig2EmbeddedPages _encodeSharedEmbeddedSymbols(
             height: image.height,
             xResolution: options.xResolution,
             yResolution: options.yResolution));
-    final instances = <ExtractedSymbolInstance>[
-      for (final instance in pages[index])
-        ExtractedSymbolInstance(
-            reorder[instance.symbol]!, instance.x, instance.y),
-    ];
+    final instances = pages[index];
     if (instances.isNotEmpty) {
       writer.writeSegment(
-          number: 2,
+          number: dictionarySegments.length + 1,
           type: Jbig2SegmentType.immediateLosslessTextRegion,
           page: 1,
-          referredTo: const [0],
+          referredTo: dictionarySegments,
           data: Jbig2Writer.textRegion(
               width: image.width,
               height: image.height,
               instances: instances.length,
               codeword: SymbolDictionaryEncoder.encodeTextRegion(
-                  ordered, instances)));
+                  symbols, instances)));
     }
     streams.add(writer.takeBytes());
   }
