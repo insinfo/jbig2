@@ -6,8 +6,9 @@ import 'mq_encoder.dart';
 
 /// Encodes a bi-level bitmap as a JBIG2 generic region (T.88 clause 6.2).
 ///
-/// All four templates of 6.2.5.3 are supported, with the nominal adaptive
-/// pixels or with any other causal ones. Template 0 with the nominal AT pixels
+/// All four templates of 6.2.5.3 are supported, the extended template of
+/// EXTTEMPLATE included, with the nominal adaptive pixels or with any other
+/// causal ones. Template 0 with the nominal AT pixels
 /// — what general purpose encoders emit for scanned pages — goes through a
 /// byte-wide context recurrence that is the exact mirror of the decoder's
 /// `_decodeTemplate0a`; every other combination goes through a per-pixel path
@@ -26,7 +27,19 @@ class GenericRegionEncoder {
   /// GBTEMPLATE of 7.4.6.2, 0 to 3.
   final int template;
 
-  /// GBATX, one entry for template 0 and four for the others (7.4.6.3).
+  /// EXTTEMPLATE of 7.4.6.2: template 0 with twelve adaptive pixels instead of
+  /// four (6.2.5.3, figure 8).
+  ///
+  /// The extended template covers the same sixteen neighbours as template 0
+  /// does with its nominal adaptive pixels — only three of the sixteen stay
+  /// fixed besides the pixel to the left — so with the nominal positions it
+  /// codes to the very same bits. It earns its twenty-four header bytes only
+  /// when the adaptive pixels are moved to follow a periodic pattern such as a
+  /// halftone screen.
+  final bool extTemplate;
+
+  /// GBATX: one entry for templates 1 to 3, four for template 0 and twelve
+  /// when [extTemplate] is set (7.4.6.3).
   final List<int> atX;
 
   /// GBATY, paired with [atX].
@@ -40,17 +53,23 @@ class GenericRegionEncoder {
     this.bitmap, {
     this.typicalPrediction = true,
     this.template = 0,
+    this.extTemplate = false,
     List<int>? atX,
     List<int>? atY,
     this.skip,
-  })  : atX = atX ?? nominalAtX(template),
-        atY = atY ?? nominalAtY(template) {
+  })  : atX = atX ?? nominalAtX(template, extTemplate: extTemplate),
+        atY = atY ?? nominalAtY(template, extTemplate: extTemplate) {
     if (template < 0 || template > 3) {
       throw ArgumentError('GBTEMPLATE is 0 to 3, not $template.');
     }
-    final needed = template == 0 ? 4 : 1;
+    if (extTemplate && template != 0) {
+      throw ArgumentError('EXTTEMPLATE only applies to GBTEMPLATE 0.');
+    }
+    final needed = template == 0 ? (extTemplate ? 12 : 4) : 1;
     if (this.atX.length < needed || this.atY.length < needed) {
-      throw ArgumentError('Template $template needs $needed adaptive pixels.');
+      throw ArgumentError(
+          '${extTemplate ? 'The extended template' : 'Template $template'} '
+          'needs $needed adaptive pixels.');
     }
     for (var i = 0; i < needed; i++) {
       final x = this.atX[i];
@@ -63,14 +82,29 @@ class GenericRegionEncoder {
     }
   }
 
-  /// The nominal AT positions of 6.2.5.3 for [template].
-  static List<int> nominalAtX(int template) => template == 0
-      ? const [3, -3, 2, -2]
-      : (template <= 1 ? const [3] : const [2]);
+  /// The nominal AT abscissae of 6.2.5.3 for [template].
+  static List<int> nominalAtX(int template, {bool extTemplate = false}) {
+    if (template == 0) {
+      return extTemplate ? _nominalExtAtX : const [3, -3, 2, -2];
+    }
+    return template == 1 ? const [3] : const [2];
+  }
 
   /// The nominal AT ordinates of 6.2.5.3 for [template].
-  static List<int> nominalAtY(int template) =>
-      template == 0 ? const [-1, -1, -2, -2] : const [-1];
+  static List<int> nominalAtY(int template, {bool extTemplate = false}) {
+    if (template == 0) {
+      return extTemplate ? _nominalExtAtY : const [-1, -1, -2, -2];
+    }
+    return const [-1];
+  }
+
+  /// The nominal positions of A1 to A12 in the extended template of figure 8.
+  static const List<int> _nominalExtAtX = [
+    -2, 0, -2, -1, 1, 2, -3, -4, 2, 3, -2, -3 //
+  ];
+  static const List<int> _nominalExtAtY = [
+    0, -2, -1, -2, -2, -1, 0, 0, -2, -1, -2, -1 //
+  ];
 
   /// Context values 6.2.5.7 reserves for the TPGDON decision, one per
   /// template.
@@ -114,11 +148,28 @@ class GenericRegionEncoder {
     [5],
   ];
 
+  /// Figure 8, GBTEMPLATE 0 with EXTTEMPLATE: the same sixteen neighbours as
+  /// figure 4, but only `(-1, -1)`, `(0, -1)`, `(1, -1)` and `(-1, 0)` are
+  /// fixed. The entries below are the nominal positions of A1 to A12, which
+  /// [_resolvedTemplate] replaces with the ones actually in use.
+  static const List<List<int>> _extTemplate = [
+    [-2, -2], [-1, -2], [0, -2], [1, -2], [2, -2], //
+    [-3, -1], [-2, -1], [-1, -1], [0, -1], [1, -1], [2, -1], [3, -1], //
+    [-4, 0], [-3, 0], [-2, 0], [-1, 0]
+  ];
+
+  /// Where A1 to A12 sit in [_extTemplate]. The order looks scrambled because
+  /// the standard numbers the adaptive pixels by usefulness while the context
+  /// is assembled by position, top-left first.
+  static const List<int> _extAtSlots = [
+    14, 2, 6, 1, 3, 10, 13, 12, 4, 11, 0, 5 //
+  ];
+
   /// True when the adaptive pixels are the nominal ones, which lets the fast
   /// path run.
   bool get usesNominalAt {
-    final nominalX = nominalAtX(template);
-    final nominalY = nominalAtY(template);
+    final nominalX = nominalAtX(template, extTemplate: extTemplate);
+    final nominalY = nominalAtY(template, extTemplate: extTemplate);
     for (var i = 0; i < nominalX.length; i++) {
       if (atX[i] != nominalX[i] || atY[i] != nominalY[i]) return false;
     }
@@ -139,7 +190,7 @@ class GenericRegionEncoder {
     final height = bitmap.height;
     final rowStride = bitmap.rowStride;
     final paddedWidth = (width + 7) & -8;
-    final fast = template == 0 && usesNominalAt;
+    final fast = template == 0 && !extTemplate && usesNominalAt;
     final positions = fast ? const <List<int>>[] : _resolvedTemplate();
 
     var ltp = 0;
@@ -163,10 +214,11 @@ class GenericRegionEncoder {
   /// The template pixel list with the adaptive markers replaced by this
   /// encoder's actual AT positions.
   List<List<int>> _resolvedTemplate() {
+    final figure = extTemplate ? _extTemplate : _templates[template];
     final positions = [
-      for (final pixel in _templates[template]) [pixel[0], pixel[1]]
+      for (final pixel in figure) [pixel[0], pixel[1]]
     ];
-    final slots = _atSlots[template];
+    final slots = extTemplate ? _extAtSlots : _atSlots[template];
     for (var i = 0; i < slots.length; i++) {
       positions[slots[i]] = [atX[i], atY[i]];
     }

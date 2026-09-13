@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import '../bitmap.dart';
 import '../encoder/generic_region_encoder.dart';
 import '../encoder/jbig2_writer.dart';
+import '../encoder/mmr_encoder.dart';
 import '../encoder/symbol_dictionary_encoder.dart';
 import '../encoder/symbol_extractor.dart';
 import 'jbig2_image.dart';
@@ -46,6 +47,27 @@ class Jbig2EncodeOptions {
   /// on noisy or dithered material. The adaptive pixels stay nominal.
   final int genericRegionTemplate;
 
+  /// Code generic regions with the extended template of EXTTEMPLATE: template
+  /// 0 with twelve adaptive pixels instead of four (T.88 clauses 6.2.5.3 and
+  /// 7.4.6.2).
+  ///
+  /// Off by default, and worth turning on only deliberately. The extended
+  /// template with its nominal adaptive pixels covers exactly the neighbours
+  /// template 0 covers, so it produces the same codeword for twenty-four more
+  /// header bytes; the gain comes from moving those pixels onto a periodic
+  /// pattern, and from decoders that support the flag — not all do.
+  final bool genericRegionExtTemplate;
+
+  /// Code generic regions with MMR, the two-dimensional coding of ITU-T T.6,
+  /// instead of the arithmetic coder (T.88 clause 6.2.6).
+  ///
+  /// Off by default: on scanned text MMR is markedly larger than the
+  /// arithmetic coder. It is here because the standard has it, because it
+  /// carries no adaptive state, and because it is the same coding a CCITT
+  /// Group 4 stream uses, so a page already held that way needs no
+  /// requantisation of any kind.
+  final bool genericRegionMmr;
+
   const Jbig2EncodeOptions({
     this.mode = Jbig2EncodeMode.auto,
     this.typicalPrediction = true,
@@ -53,6 +75,8 @@ class Jbig2EncodeOptions {
     this.yResolution = 0,
     this.refinementAggregation = true,
     this.genericRegionTemplate = 0,
+    this.genericRegionExtTemplate = false,
+    this.genericRegionMmr = false,
   });
 }
 
@@ -149,15 +173,7 @@ Uint8List _encodeGeneric(
     number: 1,
     type: Jbig2SegmentType.immediateLosslessGenericRegion,
     page: 1,
-    data: Jbig2Writer.genericRegion(
-      template: options.genericRegionTemplate,
-      atX: GenericRegionEncoder.nominalAtX(options.genericRegionTemplate),
-      atY: GenericRegionEncoder.nominalAtY(options.genericRegionTemplate),
-      width: image.width,
-      height: image.height,
-      codeword: codeword,
-      typicalPrediction: options.typicalPrediction,
-    ),
+    data: _genericRegionSegment(image, options, codeword),
   );
   if (asFile) {
     writer.writeSegment(
@@ -389,14 +405,7 @@ Uint8List _encodeGenericPages(
         number: segment++,
         type: Jbig2SegmentType.immediateLosslessGenericRegion,
         page: page,
-        data: Jbig2Writer.genericRegion(
-            template: options.genericRegionTemplate,
-            atX: GenericRegionEncoder.nominalAtX(options.genericRegionTemplate),
-            atY: GenericRegionEncoder.nominalAtY(options.genericRegionTemplate),
-            width: image.width,
-            height: image.height,
-            codeword: _codeword(image, options),
-            typicalPrediction: options.typicalPrediction));
+        data: _genericRegionSegment(image, options, _codeword(image, options)));
     writer.writeSegment(
         number: segment++,
         type: Jbig2SegmentType.endOfPage,
@@ -791,9 +800,35 @@ Uint8List _codeword(Jbig2Image image, Jbig2EncodeOptions options) {
   if (image.width <= 0 || image.height <= 0) {
     throw ArgumentError('An image must have a positive extent.');
   }
+  if (options.genericRegionMmr) {
+    if (options.genericRegionExtTemplate) {
+      throw ArgumentError(
+          'MMR and EXTTEMPLATE are alternatives, not a combination.');
+    }
+    return MmrEncoder(image.toBitmap()).encode();
+  }
   return GenericRegionEncoder(
     image.toBitmap(),
     typicalPrediction: options.typicalPrediction,
     template: options.genericRegionTemplate,
+    extTemplate: options.genericRegionExtTemplate,
   ).encode();
+}
+
+/// The generic region header that matches what [_codeword] produced.
+Uint8List _genericRegionSegment(
+    Jbig2Image image, Jbig2EncodeOptions options, Uint8List codeword) {
+  final template = options.genericRegionTemplate;
+  final ext = options.genericRegionExtTemplate;
+  return Jbig2Writer.genericRegion(
+    template: template,
+    extTemplate: ext,
+    mmr: options.genericRegionMmr,
+    atX: GenericRegionEncoder.nominalAtX(template, extTemplate: ext),
+    atY: GenericRegionEncoder.nominalAtY(template, extTemplate: ext),
+    width: image.width,
+    height: image.height,
+    codeword: codeword,
+    typicalPrediction: options.typicalPrediction,
+  );
 }

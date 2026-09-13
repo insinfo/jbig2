@@ -209,6 +209,8 @@ class Jbig2Writer {
     int y = 0,
     int template = 0,
     bool typicalPrediction = true,
+    bool extTemplate = false,
+    bool mmr = false,
     List<int> atX = const [3, -3, 2, -2],
     List<int> atY = const [-1, -1, -2, -2],
   }) {
@@ -222,20 +224,30 @@ class Jbig2Writer {
     // Bits 3-7 reserved, bits 0-2 external combination operator (0 = OR).
     body.addByte(0);
 
+    if (extTemplate && (mmr || template != 0)) {
+      throw ArgumentError(
+          'EXTTEMPLATE only applies to arithmetic GBTEMPLATE 0.');
+    }
+
     // 7.4.6.2 generic region flags: bit 0 MMR, bits 1-2 template,
     // bit 3 TPGDON, bit 4 EXTTEMPLATE.
-    var flags = (template & 0x03) << 1;
-    if (typicalPrediction) flags |= 0x08;
+    var flags = mmr ? 0x01 : (template & 0x03) << 1;
+    if (typicalPrediction && !mmr) flags |= 0x08;
+    if (extTemplate) flags |= 0x10;
     body.addByte(flags);
 
-    // 7.4.6.3 adaptive pixels: four pairs for template 0, one for the rest.
-    final count = template == 0 ? 4 : 1;
-    if (atX.length < count || atY.length < count) {
-      throw ArgumentError('Template $template needs $count adaptive pixel(s).');
-    }
-    for (var i = 0; i < count; i++) {
-      body.addByte(atX[i] & 0xff);
-      body.addByte(atY[i] & 0xff);
+    // 7.4.6.3 adaptive pixels: none under MMR, twelve pairs under
+    // EXTTEMPLATE, four for template 0 and one for the rest.
+    if (!mmr) {
+      final count = template == 0 ? (extTemplate ? 12 : 4) : 1;
+      if (atX.length < count || atY.length < count) {
+        throw ArgumentError(
+            'Template $template needs $count adaptive pixel(s).');
+      }
+      for (var i = 0; i < count; i++) {
+        body.addByte(atX[i] & 0xff);
+        body.addByte(atY[i] & 0xff);
+      }
     }
 
     body.add(codeword);
