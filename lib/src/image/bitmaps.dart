@@ -155,8 +155,7 @@ class Bitmaps {
 
   static void blit(Bitmap src, Bitmap dst, int x, int y,
       CombinationOperator combinationOperator) {
-    if (!_zeroIsIdentity(combinationOperator) ||
-        !_fitsInside(src, dst, x, y)) {
+    if (!_zeroIsIdentity(combinationOperator) || !_fitsInside(src, dst, x, y)) {
       // The byte-wide routines below index whole bytes, so they can only clip
       // a placement that starts and ends on the destination. A partial one --
       // a halftone grid whose origin is negative, say -- has to go pixel by

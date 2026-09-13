@@ -54,8 +54,7 @@ Uint8List _unknownLengthFile({
     number: 0,
     type: Jbig2SegmentType.pageInformation,
     page: 1,
-    data: Jbig2Writer.pageInformation(
-        width: width, height: pageHeight ?? rows),
+    data: Jbig2Writer.pageInformation(width: width, height: pageHeight ?? rows),
   );
   writer.writeSegment(
     number: 1,

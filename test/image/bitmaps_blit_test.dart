@@ -53,7 +53,8 @@ void main() {
       expect(dstRegionBitmap.getByteArray(), equals(src.getByteArray()));
     });
 
-    test('an operator whose identity is 1 leaves the pixels around the region '
+    test(
+        'an operator whose identity is 1 leaves the pixels around the region '
         'alone', () {
       // 7.4.1.5 allows AND, XNOR and REPLACE as well as OR and XOR. A blit
       // that writes whole destination bytes would drag the zero bits padding
@@ -79,9 +80,7 @@ void main() {
         for (int y = 0; y < dst.height; y++) {
           for (int x = 0; x < dst.width; x++) {
             final inside = x >= 3 && x < 8 && y >= 1 && y < 3;
-            final expected = inside
-                ? Bitmaps.combinePixels(1, 0, op)
-                : 1;
+            final expected = inside ? Bitmaps.combinePixels(1, 0, op) : 1;
             expect(dst.getPixel(x, y), equals(expected),
                 reason: '$op at pixel ($x, $y)');
           }

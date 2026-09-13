@@ -276,8 +276,7 @@ void main() {
       final background = _noise(width, height, 1);
       final refined = _noise(24, 16, 2);
 
-      final reference =
-          Bitmaps.extract(Rectangle(8, 4, 24, 16), background);
+      final reference = Bitmaps.extract(Rectangle(8, 4, 24, 16), background);
       final mq = MqEncoder();
       GenericRefinementRegionEncoder(refined, reference)
           .encodeInto(mq, CX(1 << 13, 0));

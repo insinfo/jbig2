@@ -48,8 +48,7 @@ class PatternDictionaryEncoder {
 
   /// The collective bitmap of 6.7.5, the patterns written left to right.
   Bitmap collectiveBitmap() {
-    final collective =
-        Bitmap(patterns.length * patternWidth, patternHeight);
+    final collective = Bitmap(patterns.length * patternWidth, patternHeight);
     for (var index = 0; index < patterns.length; index++) {
       final pattern = patterns[index];
       for (var y = 0; y < patternHeight; y++) {
@@ -77,9 +76,8 @@ class PatternDictionaryEncoder {
     body.addByte(grayMax & 0xff);
 
     // 6.7.5: GBATX1 is -HDPW, the rest of the adaptive pixels stay nominal.
-    final atX = template == 0
-        ? <int>[-patternWidth, -3, 2, -2]
-        : <int>[-patternWidth];
+    final atX =
+        template == 0 ? <int>[-patternWidth, -3, 2, -2] : <int>[-patternWidth];
     final atY = template == 0 ? const [0, -1, -2, -2] : const [0];
 
     body.add(GenericRegionEncoder(
@@ -259,8 +257,8 @@ class HalftoneRegionEncoder {
       final difference = Bitmap(gridWidth, gridHeight);
       for (var mg = 0; mg < gridHeight; mg++) {
         for (var ng = 0; ng < gridWidth; ng++) {
-          difference.writePixel(
-              ng, mg, planes[j].getPixel(ng, mg) ^ planes[j + 1].getPixel(ng, mg));
+          difference.writePixel(ng, mg,
+              planes[j].getPixel(ng, mg) ^ planes[j + 1].getPixel(ng, mg));
         }
       }
       return difference;

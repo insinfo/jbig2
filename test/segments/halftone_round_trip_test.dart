@@ -52,7 +52,8 @@ Bitmap _render(List<List<int>> grid, List<Bitmap> patterns, int offsetNg,
               targetY >= height) {
             continue;
           }
-          if (pattern.getPixel(x, y) == 1) image.writePixel(targetX, targetY, 1);
+          if (pattern.getPixel(x, y) == 1)
+            image.writePixel(targetX, targetY, 1);
         }
       }
     }
@@ -144,8 +145,7 @@ void main() {
           regionHeight: height,
           template: template,
         );
-        final image =
-            decodeJbig2(_file(dictionary, region, width, height));
+        final image = decodeJbig2(_file(dictionary, region, width, height));
         _expectSame(image, _render(grid, patterns, 0, 0, width, height));
       });
     }
@@ -231,8 +231,8 @@ void main() {
         regionHeight: rows * step,
         vectorX: step << 8,
       );
-      final image = decodeJbig2(
-          _file(dictionary, region, columns * step, rows * step));
+      final image =
+          decodeJbig2(_file(dictionary, region, columns * step, rows * step));
 
       final expected = Bitmap(columns * step, rows * step);
       for (var mg = 0; mg < rows; mg++) {
@@ -253,8 +253,7 @@ void main() {
     test('the pattern dictionary rejects sizes it cannot store', () {
       expect(() => PatternDictionaryEncoder([patterns.first]),
           throwsArgumentError);
-      expect(
-          () => PatternDictionaryEncoder([patterns[0], Bitmap(4, 4)]),
+      expect(() => PatternDictionaryEncoder([patterns[0], Bitmap(4, 4)]),
           throwsArgumentError);
     });
 

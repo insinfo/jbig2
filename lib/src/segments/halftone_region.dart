@@ -142,8 +142,8 @@ class HalftoneRegion implements Region {
         // time here would both double the origin and mix the fixed point value
         // into a pixel coordinate. A stream with HGX = HGY = 0 hides the
         // mistake, which is why only a shifted grid exposes it.
-        Bitmaps.blit(patternBitmap, _halftoneRegionBitmap!, x, y,
-            _hCombinationOperator);
+        Bitmaps.blit(
+            patternBitmap, _halftoneRegionBitmap!, x, y, _hCombinationOperator);
       }
     }
   }
