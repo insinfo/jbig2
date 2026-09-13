@@ -482,7 +482,7 @@ class SymbolDictionary implements Dictionary {
   void _decodeDirectlyThroughGenericRegion(
       final int symWidth, final int hcHeight) {
     _genericRegion ??= GenericRegion(_subInputStream!);
-    _genericRegion!.setParameters(false, _sdTemplate, false, false, _sdATX!,
+    _genericRegion!.setParameters(false, _sdTemplate, false, null, _sdATX!,
         _sdATY!, symWidth, hcHeight, _cx, _arithmeticDecoder);
     _addSymbol(_genericRegion!);
   }

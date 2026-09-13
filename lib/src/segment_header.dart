@@ -36,6 +36,9 @@ class SegmentHeader {
     53: () => Table(),
   };
 
+  /// The value 7.2.7 reserves for "the length is not known yet".
+  static const int unknownDataLength = 0xFFFFFFFF;
+
   int segmentNr = 0;
   int segmentType = 0;
   int retainFlag = 0;
@@ -45,6 +48,14 @@ class SegmentHeader {
   int segmentHeaderLength = 0;
   int segmentDataLength = 0;
   int segmentDataStartOffset = 0;
+
+  /// True when 7.2.7's unknown length was declared and resolved by scanning.
+  bool hasUnknownDataLength = false;
+
+  /// The row count 7.4.6.4 stores at the end of an unknown-length segment, or
+  /// -1 when the segment declared its length normally.
+  int unknownLengthRowCount = -1;
+
   final SubInputStream subInputStream;
   final JBIG2Document document;
 
@@ -84,6 +95,9 @@ class SegmentHeader {
 
     readDataStartOffset(subInputStream, organisationType);
     readSegmentHeaderLength(subInputStream, offset);
+
+    /* 7.2.7 / 7.4.6.4 Unknown data length */
+    resolveUnknownDataLength(subInputStream, organisationType);
   }
 
   void readSegmentNumber(SubInputStream subInputStream) {
@@ -201,6 +215,69 @@ class SegmentHeader {
   void readSegmentHeaderLength(SubInputStream subInputStream, int offset) {
     segmentHeaderLength = subInputStream.getStreamPosition() - offset;
     // print("|-Segment header length: $segmentHeaderLength");
+  }
+
+  /// Resolves the unknown data length 7.2.7 lets an immediate generic region
+  /// segment declare.
+  ///
+  /// Such a segment ends with `FF AC` when it is arithmetically coded and with
+  /// `00 00` when it is MMR coded, in both cases followed by a four byte count
+  /// of the rows actually present (7.4.6.4). Neither sequence can occur by
+  /// chance earlier in the data, so scanning from the eighteenth byte of the
+  /// data part — the generic region flags byte, whose bit 0 is MMR — finds the
+  /// real end of the segment.
+  void resolveUnknownDataLength(
+      SubInputStream subInputStream, int organisationType) {
+    if (segmentDataLength != unknownDataLength) return;
+
+    if (segmentType != 38 && segmentType != 39) {
+      throw UnsupportedError(
+          "7.2.7: only an immediate generic region segment may declare an "
+          "unknown data length, but segment $segmentNr has type $segmentType");
+    }
+    if (organisationType != JBIG2Document.SEQUENTIAL) {
+      throw UnsupportedError(
+          "7.2.7: an unknown data length cannot be resolved in a "
+          "random-access organised file");
+    }
+
+    hasUnknownDataLength = true;
+
+    // 7.4.1 makes the region segment information field seventeen bytes long,
+    // so the eighteenth byte of the data part is the generic region flags.
+    final int flagsPosition = segmentDataStartOffset + 17;
+    if (flagsPosition >= subInputStream.length) {
+      throw UnsupportedError(
+          "7.2.7: segment $segmentNr is too short to carry a generic region");
+    }
+    subInputStream.seek(flagsPosition);
+    final bool isMMREncoded = (subInputStream.read() & 0x01) == 1;
+    final int first = isMMREncoded ? 0x00 : 0xFF;
+    final int second = isMMREncoded ? 0x00 : 0xAC;
+
+    int position = subInputStream.getStreamPosition();
+    int previous = -1;
+    int end = -1;
+    while (true) {
+      final int value = subInputStream.read();
+      if (value == -1) break;
+      position++;
+      if (previous == first && value == second) {
+        end = position;
+        break;
+      }
+      previous = value;
+    }
+
+    if (end < 0 || end + 4 > subInputStream.length) {
+      throw UnsupportedError(
+          "7.2.7: segment $segmentNr declares an unknown length but has no "
+          "terminating sequence");
+    }
+
+    subInputStream.seek(end);
+    unknownLengthRowCount = subInputStream.readBits(32) & 0xffffffff;
+    segmentDataLength = end + 4 - segmentDataStartOffset;
   }
 
   SubInputStream getDataInputStream() {

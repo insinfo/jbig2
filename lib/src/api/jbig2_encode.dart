@@ -39,12 +39,20 @@ class Jbig2EncodeOptions {
   /// aggregation when that makes the complete stream smaller.
   final bool refinementAggregation;
 
+  /// GBTEMPLATE for generic regions, 0 to 3 (T.88 clause 6.2.5.3).
+  ///
+  /// Template 0 looks at sixteen neighbouring pixels and compresses scanned
+  /// text best; the higher numbers look at fewer, cost less state and can win
+  /// on noisy or dithered material. The adaptive pixels stay nominal.
+  final int genericRegionTemplate;
+
   const Jbig2EncodeOptions({
     this.mode = Jbig2EncodeMode.auto,
     this.typicalPrediction = true,
     this.xResolution = 0,
     this.yResolution = 0,
     this.refinementAggregation = true,
+    this.genericRegionTemplate = 0,
   });
 }
 
@@ -142,6 +150,9 @@ Uint8List _encodeGeneric(
     type: Jbig2SegmentType.immediateLosslessGenericRegion,
     page: 1,
     data: Jbig2Writer.genericRegion(
+      template: options.genericRegionTemplate,
+      atX: GenericRegionEncoder.nominalAtX(options.genericRegionTemplate),
+      atY: GenericRegionEncoder.nominalAtY(options.genericRegionTemplate),
       width: image.width,
       height: image.height,
       codeword: codeword,
@@ -379,6 +390,9 @@ Uint8List _encodeGenericPages(
         type: Jbig2SegmentType.immediateLosslessGenericRegion,
         page: page,
         data: Jbig2Writer.genericRegion(
+            template: options.genericRegionTemplate,
+            atX: GenericRegionEncoder.nominalAtX(options.genericRegionTemplate),
+            atY: GenericRegionEncoder.nominalAtY(options.genericRegionTemplate),
             width: image.width,
             height: image.height,
             codeword: _codeword(image, options),
@@ -780,5 +794,6 @@ Uint8List _codeword(Jbig2Image image, Jbig2EncodeOptions options) {
   return GenericRegionEncoder(
     image.toBitmap(),
     typicalPrediction: options.typicalPrediction,
+    template: options.genericRegionTemplate,
   ).encode();
 }

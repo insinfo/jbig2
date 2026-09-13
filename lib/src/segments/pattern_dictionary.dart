@@ -105,7 +105,7 @@ class PatternDictionary implements Dictionary {
           (_grayMax + 1) * _hdpWidth,
           _hdTemplate,
           false,
-          false,
+          null,
           _gbAtX,
           _gbAtY);
 

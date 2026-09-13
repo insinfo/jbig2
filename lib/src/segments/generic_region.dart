@@ -9,6 +9,7 @@ import '../decoder/mmr/mmr_decompressor.dart';
 
 class GenericRegion implements Region {
   SubInputStream? _subInputStream;
+  SegmentHeader? _segmentHeader;
   final int _dataHeaderOffset = 0;
   int _dataOffset = 0;
   // ignore: unused_field
@@ -26,6 +27,10 @@ class GenericRegion implements Region {
   List<bool>? _gbAtOverride;
 
   bool _override = false;
+
+  /// 6.2.5.6 SKIP: a GBW by GBH mask whose set pixels are not decoded at all;
+  /// the corresponding pixel of the region is 0. Null when USESKIP is 0.
+  Bitmap? _skip;
 
   Bitmap? _regionBitmap;
 
@@ -83,6 +88,25 @@ class GenericRegion implements Region {
 
     /* Segment data structure */
     _computeSegmentDataStructure();
+
+    _clampHeightToRowCount();
+  }
+
+  /// 7.4.6.4: a segment that declared an unknown length (7.2.7) may hold fewer
+  /// rows than its region segment information field announces. The real count
+  /// sits in the last four bytes of the data part, and the region is that many
+  /// rows tall.
+  void _clampHeightToRowCount() {
+    final SegmentHeader? header = _segmentHeader;
+    if (header == null || !header.hasUnknownDataLength) return;
+
+    final int rows = header.unknownLengthRowCount;
+    if (rows < 0 || rows > _regionInfo!.bitmapHeight) {
+      throw FormatException(
+          "7.4.6.4: the row count $rows of segment ${header.segmentNr} is not "
+          "within its declared region height ${_regionInfo!.bitmapHeight}");
+    }
+    _regionInfo!.bitmapHeight = rows;
   }
 
   void _readGbAtPixels(final int amountOfGbAt) {
@@ -206,9 +230,6 @@ class GenericRegion implements Region {
     }
   }
 
-  // Templates implementation omitted for brevity, will add them in next step or if requested.
-  // Wait, I should implement them.
-
   void _decodeTemplate0a(final int lineNumber, final int width,
       final int rowStride, final int paddedWidth, int byteIndex, int idx) {
     int context;
@@ -247,15 +268,20 @@ class GenericRegion implements Region {
 
       for (int minorX = 0; minorX < minorWidth; minorX++) {
         final int toShift = 7 - minorX;
-        if (_override) {
-          overriddenContext = _overrideAtTemplate0a(
-              context, (x + minorX), lineNumber, result, minorX, toShift);
-          _cx!.index = overriddenContext;
+        int bit;
+        if (_isSkipped(x + minorX, lineNumber)) {
+          bit = 0;
         } else {
-          _cx!.index = context;
-        }
+          if (_override) {
+            overriddenContext = _overrideAtTemplate0a(
+                context, (x + minorX), lineNumber, result, minorX, toShift);
+            _cx!.index = overriddenContext;
+          } else {
+            _cx!.index = context;
+          }
 
-        int bit = _arithDecoder!.decode(_cx!);
+          bit = _arithDecoder!.decode(_cx!);
+        }
 
         result |= bit << toShift;
 
@@ -308,15 +334,20 @@ class GenericRegion implements Region {
 
       for (int minorX = 0; minorX < minorWidth; minorX++) {
         final int toShift = 7 - minorX;
-        if (_override) {
-          overriddenContext = _overrideAtTemplate0b(
-              context, (x + minorX), lineNumber, result, minorX, toShift);
-          _cx!.index = overriddenContext;
+        final int bit;
+        if (_isSkipped(x + minorX, lineNumber)) {
+          bit = 0;
         } else {
-          _cx!.index = context;
-        }
+          if (_override) {
+            overriddenContext = _overrideAtTemplate0b(
+                context, (x + minorX), lineNumber, result, minorX, toShift);
+            _cx!.index = overriddenContext;
+          } else {
+            _cx!.index = context;
+          }
 
-        final int bit = _arithDecoder!.decode(_cx!);
+          bit = _arithDecoder!.decode(_cx!);
+        }
 
         result |= bit << toShift;
 
@@ -368,15 +399,20 @@ class GenericRegion implements Region {
       }
 
       for (int minorX = 0; minorX < minorWidth; minorX++) {
-        if (_override) {
-          overriddenContext = _overrideAtTemplate1(
-              context, x + minorX, lineNumber, result, minorX);
-          _cx!.index = overriddenContext;
+        final int bit;
+        if (_isSkipped(x + minorX, lineNumber)) {
+          bit = 0;
         } else {
-          _cx!.index = context;
-        }
+          if (_override) {
+            overriddenContext = _overrideAtTemplate1(
+                context, x + minorX, lineNumber, result, minorX);
+            _cx!.index = overriddenContext;
+          } else {
+            _cx!.index = context;
+          }
 
-        final int bit = _arithDecoder!.decode(_cx!);
+          bit = _arithDecoder!.decode(_cx!);
+        }
 
         result |= bit << (7 - minorX);
 
@@ -429,15 +465,20 @@ class GenericRegion implements Region {
       }
 
       for (int minorX = 0; minorX < minorWidth; minorX++) {
-        if (_override) {
-          overriddenContext = _overrideAtTemplate2(
-              context, x + minorX, lineNumber, result, minorX);
-          _cx!.index = overriddenContext;
+        final int bit;
+        if (_isSkipped(x + minorX, lineNumber)) {
+          bit = 0;
         } else {
-          _cx!.index = context;
-        }
+          if (_override) {
+            overriddenContext = _overrideAtTemplate2(
+                context, x + minorX, lineNumber, result, minorX);
+            _cx!.index = overriddenContext;
+          } else {
+            _cx!.index = context;
+          }
 
-        final int bit = _arithDecoder!.decode(_cx!);
+          bit = _arithDecoder!.decode(_cx!);
+        }
 
         result |= bit << (7 - minorX);
 
@@ -478,15 +519,20 @@ class GenericRegion implements Region {
       }
 
       for (int minorX = 0; minorX < minorWidth; minorX++) {
-        if (_override) {
-          overriddenContext = _overrideAtTemplate3(
-              context, x + minorX, lineNumber, result, minorX);
-          _cx!.index = overriddenContext;
+        final int bit;
+        if (_isSkipped(x + minorX, lineNumber)) {
+          bit = 0;
         } else {
-          _cx!.index = context;
-        }
+          if (_override) {
+            overriddenContext = _overrideAtTemplate3(
+                context, x + minorX, lineNumber, result, minorX);
+            _cx!.index = overriddenContext;
+          } else {
+            _cx!.index = context;
+          }
 
-        final int bit = _arithDecoder!.decode(_cx!);
+          bit = _arithDecoder!.decode(_cx!);
+        }
 
         result |= bit << (7 - minorX);
         context =
@@ -590,9 +636,6 @@ class GenericRegion implements Region {
 
   int _overrideAtTemplate0b(int context, final int x, final int y,
       final int result, final int minorX, final int toShift) {
-    // Implementation similar to 0a but with different masks and shifts
-    // For brevity, I'll assume the user wants me to implement it fully.
-    // I'll copy the logic from Java.
     if (_gbAtOverride![0]) {
       context &= 0xfffd;
       if (_gbAtY![0] == 0 && _gbAtX![0] >= -minorX) {
@@ -723,6 +766,15 @@ class GenericRegion implements Region {
     }
   }
 
+  /// 6.2.5.6: true when the pixel is masked out by SKIP and must be left at 0
+  /// without consuming a decision from the arithmetic decoder.
+  bool _isSkipped(final int x, final int y) {
+    final Bitmap? skip = _skip;
+    if (skip == null) return false;
+    if (x >= skip.width || y >= skip.height) return false;
+    return skip.getPixel(x, y) == 1;
+  }
+
   int _getPixel(final int x, final int y) {
     if (x < 0 || x >= _regionBitmap!.width) return 0;
     if (y < 0 || y >= _regionBitmap!.height) return 0;
@@ -733,22 +785,21 @@ class GenericRegion implements Region {
       bool isMMREncoded,
       int sdTemplate,
       bool isTPGDon,
-      bool useSkip,
+      Bitmap? skip,
       List<int> sdATX,
       List<int> sdATY,
       int symWidth,
       int hcHeight,
       CX? cx,
       ArithmeticDecoder? arithmeticDecoder) {
+    _skip = skip;
     _isMMREncoded = isMMREncoded;
     _gbTemplate = sdTemplate;
     _isTPGDon = isTPGDon;
     _gbAtX = sdATX;
     _gbAtY = sdATY;
-    // _regionInfo might be null if constructor without stream was used and init not called yet?
-    // But setParameters is called by SymbolDictionary which creates GenericRegion with stream?
-    // SymbolDictionary: genericRegion = new GenericRegion(subInputStream);
-    // So _regionInfo is initialized.
+    // A symbol dictionary always builds its GenericRegion around a stream, so
+    // the region information field is there by the time this runs.
     _regionInfo!.bitmapWidth = symWidth;
     _regionInfo!.bitmapHeight = hcHeight;
     if (cx != null) _cx = cx;
@@ -778,7 +829,8 @@ class GenericRegion implements Region {
     _regionBitmap = null;
   }
 
-  // Overload for PatternDictionary and HalftoneRegion (if needed later)
+  /// Prepares the region for a pattern dictionary's collective bitmap or for
+  /// one bit plane of a halftone region's grey-scale image.
   void setParametersForPattern(
       bool isMMREncoded,
       int dataOffset,
@@ -787,9 +839,10 @@ class GenericRegion implements Region {
       int gbw,
       int gbTemplate,
       bool isTPGDon,
-      bool useSkip,
+      Bitmap? skip,
       List<int>? gbAtX,
       List<int>? gbAtY) {
+    _skip = skip;
     _dataOffset = dataOffset;
     _dataLength = dataLength;
 
@@ -808,6 +861,7 @@ class GenericRegion implements Region {
 
   @override
   void init(SegmentHeader? header, SubInputStream sis) {
+    _segmentHeader = header;
     _subInputStream = sis;
     _regionInfo = RegionSegmentInformation(_subInputStream);
     _parseHeader();

@@ -98,8 +98,74 @@ class Bitmaps {
     }
   }
 
+  /// Combines one pixel the way [combineBytes] combines eight of them.
+  static int combinePixels(int value1, int value2, CombinationOperator op) {
+    switch (op) {
+      case CombinationOperator.OR:
+        return value1 | value2;
+      case CombinationOperator.AND:
+        return value1 & value2;
+      case CombinationOperator.XOR:
+        return value1 ^ value2;
+      case CombinationOperator.XNOR:
+        return (value1 ^ value2) ^ 1;
+      case CombinationOperator.REPLACE:
+        return value2;
+    }
+  }
+
+  /// True when combining a source pixel of 0 leaves the destination alone.
+  ///
+  /// The byte-wide routines below write whole destination bytes, so the zero
+  /// bits that pad the last byte of a source row, and the bits a shifted row
+  /// does not cover, reach the destination as if they were part of the
+  /// region. That is harmless for OR and XOR, whose identity element is 0, and
+  /// wrong for every other operator of 7.4.1.5 — those go through
+  /// [blitPixelwise] instead.
+  static bool _zeroIsIdentity(CombinationOperator op) {
+    return op == CombinationOperator.OR || op == CombinationOperator.XOR;
+  }
+
+  /// True when the whole of [src] lands inside [dst] at ([x], [y]).
+  static bool _fitsInside(Bitmap src, Bitmap dst, int x, int y) {
+    return x >= 0 &&
+        y >= 0 &&
+        x + src.width <= dst.width &&
+        y + src.height <= dst.height;
+  }
+
+  /// Combines [src] into [dst] at ([x], [y]) one pixel at a time, touching
+  /// nothing outside the source rectangle.
+  static void blitPixelwise(
+      Bitmap src, Bitmap dst, int x, int y, CombinationOperator op) {
+    for (int line = 0; line < src.height; line++) {
+      final int targetY = y + line;
+      if (targetY < 0 || targetY >= dst.height) continue;
+      for (int column = 0; column < src.width; column++) {
+        final int targetX = x + column;
+        if (targetX < 0 || targetX >= dst.width) continue;
+        dst.writePixel(
+            targetX,
+            targetY,
+            combinePixels(dst.getPixel(targetX, targetY),
+                src.getPixel(column, line), op));
+      }
+    }
+  }
+
   static void blit(Bitmap src, Bitmap dst, int x, int y,
       CombinationOperator combinationOperator) {
+    if (!_zeroIsIdentity(combinationOperator) ||
+        !_fitsInside(src, dst, x, y)) {
+      // The byte-wide routines below index whole bytes, so they can only clip
+      // a placement that starts and ends on the destination. A partial one --
+      // a halftone grid whose origin is negative, say -- has to go pixel by
+      // pixel, or the row offset would be read as a byte offset and the
+      // pattern would land eight times too far to the left.
+      blitPixelwise(src, dst, x, y, combinationOperator);
+      return;
+    }
+
     int startLine = 0;
     int srcStartIdx = 0;
     int srcEndIdx = (src.rowStride - 1);

@@ -6,7 +6,9 @@ import 'package:jbig2/src/segment_data.dart';
 import 'package:jbig2/src/segments/page_information.dart';
 import 'package:jbig2/src/region.dart';
 import 'package:jbig2/src/segments/end_of_stripe.dart';
+import 'package:jbig2/src/segments/generic_refinement_region.dart';
 import 'package:jbig2/src/segments/region_segment_information.dart';
+import 'package:jbig2/src/util/rectangle.dart';
 import 'package:jbig2/src/util/combination_operator.dart';
 import 'package:jbig2/src/image/bitmaps.dart';
 
@@ -74,11 +76,8 @@ class JBIG2Page {
     pageBitmap =
         Bitmap(pageInformation.getWidth(), pageInformation.getHeight());
 
-    // If default pixel value is not 0, byte will be filled with 0xff
-    if (pageInformation.getDefaultPixelValue() != 0) {
-      // Arrays.fill(pageBitmap.getByteArray(), (byte) 0xff);
-      pageBitmap!.bitmap.fillRange(0, pageBitmap!.bitmap.length, 0xff);
-    }
+    /* 8.2 3) Fill the page buffer with the page's default pixel value. */
+    fillDefaultPixelValue(pageInformation);
 
     for (SegmentHeader s in segments.values) {
       switch (s.segmentType) {
@@ -90,6 +89,13 @@ class JBIG2Page {
         case 39: // Immediate lossless generic region
         case 42: // Immediate generic refinement region
         case 43: // Immediate lossless generic refinement region
+          /* 8.2 5) c) A refinement region referring to no other segment
+           * refines the page buffer itself. */
+          if (refinesThePageBuffer(s)) {
+            refinePageBuffer(s.getSegmentData() as GenericRefinementRegion);
+            break;
+          }
+
           final Region r = s.getSegmentData() as Region;
           final Bitmap regionBitmap = r.getRegionBitmap();
 
@@ -107,6 +113,50 @@ class JBIG2Page {
     }
   }
 
+  /// 8.2 3): a page buffer starts out filled with the default pixel value its
+  /// page information segment declares (7.4.8.5).
+  void fillDefaultPixelValue(PageInformation pageInformation) {
+    if (pageInformation.getDefaultPixelValue() != 0) {
+      pageBitmap!.bitmap.fillRange(0, pageBitmap!.bitmap.length, 0xff);
+    }
+  }
+
+  /// True in the case of 8.2 5) c): an immediate generic refinement region
+  /// segment that refers to no intermediate region, and so refines the part of
+  /// the page buffer its region segment information field points at rather
+  /// than an auxiliary buffer an intermediate region left behind.
+  bool refinesThePageBuffer(SegmentHeader s) {
+    if (s.segmentType != 42 && s.segmentType != 43) return false;
+    for (final SegmentHeader referred in s.rtSegments) {
+      switch (referred.segmentType) {
+        case 4: // Intermediate text region
+        case 20: // Intermediate halftone region
+        case 36: // Intermediate generic region
+        case 40: // Intermediate generic refinement region
+          return false;
+      }
+    }
+    return true;
+  }
+
+  /// 8.2 5) c): refines a rectangle of the page buffer in place.
+  ///
+  /// The reference bitmap is the part of the page the region covers, and the
+  /// refined result replaces it. The page combination operator plays no part,
+  /// because the standard says the refinement "replaces a part of the page
+  /// buffer".
+  void refinePageBuffer(GenericRefinementRegion region) {
+    final RegionSegmentInformation regionInfo = region.getRegionInfo();
+    final Rectangle roi = Rectangle(
+        regionInfo.getXLocation(),
+        regionInfo.getYLocation(),
+        regionInfo.bitmapWidth,
+        regionInfo.bitmapHeight);
+    region.setPageAsReference(Bitmaps.extract(roi, pageBitmap!));
+    Bitmaps.blit(region.getRegionBitmap(), pageBitmap!, roi.x, roi.y,
+        CombinationOperator.REPLACE);
+  }
+
   bool fitsPage(PageInformation pageInformation, Bitmap regionBitmap) {
     return countRegions() == 1 &&
         pageInformation.getDefaultPixelValue() == 0 &&
@@ -114,23 +164,40 @@ class JBIG2Page {
         pageInformation.getHeight() == regionBitmap.height;
   }
 
+  /// 8.2 2): a page that left its height unknown (0xFFFFFFFF in 7.4.8.2) takes
+  /// it from the end of stripe segments, which 7.4.9 defines as the Y
+  /// coordinate of each stripe's last row.
   void createStripedPage(PageInformation pageInformation) {
     final List<SegmentData> pageStripes = collectPageStripes();
 
+    if (finalHeight == 0) {
+      // 7.4.9 requires at least one end of stripe segment on a page of unknown
+      // height. Without one, fall back to the bottom of the lowest region so
+      // the page is still usable instead of being zero rows tall.
+      for (final SegmentData sd in pageStripes) {
+        if (sd is Region) {
+          final RegionSegmentInformation info = sd.getRegionInfo();
+          final int bottom = info.getYLocation() + info.bitmapHeight;
+          if (bottom > finalHeight) finalHeight = bottom;
+        }
+      }
+    }
+
     pageBitmap = Bitmap(pageInformation.getWidth(), finalHeight);
 
-    int startLine = 0;
+    /* 8.2 3) Fill the page buffer with the page's default pixel value. */
+    fillDefaultPixelValue(pageInformation);
+
+    /* 8.2 5): every region goes to the location its own region segment
+     * information field gives, stripe or no stripe. */
     for (SegmentData sd in pageStripes) {
-      if (sd is EndOfStripe) {
-        startLine = sd.getLineNumber() + 1;
-      } else {
-        final Region r = sd as Region;
-        final RegionSegmentInformation regionInfo = r.getRegionInfo();
-        final CombinationOperator op = getCombinationOperator(
-            pageInformation, regionInfo.getCombinationOperator());
-        Bitmaps.blit(r.getRegionBitmap(), pageBitmap!,
-            regionInfo.getXLocation(), startLine, op);
-      }
+      if (sd is EndOfStripe) continue;
+      final Region r = sd as Region;
+      final RegionSegmentInformation regionInfo = r.getRegionInfo();
+      final CombinationOperator op = getCombinationOperator(
+          pageInformation, regionInfo.getCombinationOperator());
+      Bitmaps.blit(r.getRegionBitmap(), pageBitmap!, regionInfo.getXLocation(),
+          regionInfo.getYLocation(), op);
     }
   }
 

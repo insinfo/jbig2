@@ -70,43 +70,17 @@ class HalftoneRegion implements Region {
     _hGridWidth = _subInputStream!.readBits(32) & 0xffffffff;
     _hGridHeight = _subInputStream!.readBits(32) & 0xffffffff;
 
-    _hGridX = _subInputStream!.readBits(32); // Signed? Java reads 32 bits.
-    // Java: hGridX = (int) subInputStream.readBits(32);
-    // Dart readBits returns int. If it's signed 32-bit in Java, it might be negative.
-    // My readBits returns unsigned value if I don't sign extend.
-    // Wait, readBits returns int. If I read 32 bits, it's a positive integer in Dart (64-bit).
-    // I need to sign extend if it's supposed to be signed 32-bit.
-    // Java (int) cast does sign extension if the 32nd bit is set.
-    _hGridX = _toSigned32(_hGridX);
+    // 7.4.5.1.2: HGX and HGY are signed 32 bit fixed point values with eight
+    // fractional bits.
+    _hGridX = _subInputStream!.readBits(32).toSigned(32);
+    _hGridY = _subInputStream!.readBits(32).toSigned(32);
 
-    _hGridY = _subInputStream!.readBits(32);
-    _hGridY = _toSigned32(_hGridY);
-
+    // 7.4.5.1.3: HRX and HRY are unsigned 16 bit fixed point values.
     _hRegionX = _subInputStream!.readBits(16) & 0xffff;
-    _hRegionX = _toSigned16(
-        _hRegionX); // Java: (int) subInputStream.readBits(16) & 0xffff; -> This is unsigned 16 bit in Java int.
-    // Wait, Java: hRegionX = (int) subInputStream.readBits(16) & 0xffff;
-    // readBits returns long in Java? No, int or long.
-    // If readBits returns long, & 0xffff keeps it positive.
-    // So hRegionX is unsigned 16-bit.
-    // My readBits returns int.
-
     _hRegionY = _subInputStream!.readBits(16) & 0xffff;
-    // Same here.
 
     _computeSegmentDataStructure();
     _checkInput();
-  }
-
-  int _toSigned32(int val) {
-    if (val >= 0x80000000) return val - 0x100000000;
-    return val;
-  }
-
-  int _toSigned16(int val) {
-    // Java code uses & 0xffff, so it treats it as unsigned 16-bit integer stored in int.
-    // So I don't need to sign extend.
-    return val;
   }
 
   void _computeSegmentDataStructure() {
@@ -142,8 +116,15 @@ class HalftoneRegion implements Region {
         }
       }
 
+      /* 6.6.5 2) */
+      final Bitmap? skip = _hSkipEnabled ? _computeSkipBitmap() : null;
+
+      /* 6.6.5 3) */
       final int bitsPerValue = (log(_patterns!.length) / log(2)).ceil();
-      final List<List<int>> grayScaleValues = _grayScaleDecoding(bitsPerValue);
+
+      /* 6.6.5 4) and 5) */
+      final List<List<int>> grayScaleValues =
+          _grayScaleDecoding(bitsPerValue, skip);
       _renderPattern(grayScaleValues);
     }
     return _halftoneRegionBitmap!;
@@ -156,8 +137,13 @@ class HalftoneRegion implements Region {
         x = _computeX(m, n);
         y = _computeY(m, n);
         final Bitmap patternBitmap = _patterns![grayScaleValues[m][n]];
-        Bitmaps.blit(patternBitmap, _halftoneRegionBitmap!, (x + _hGridX),
-            (y + _hGridY), _hCombinationOperator);
+        // 6.6.5.2 draws the pattern at (x, y). _computeX and _computeY already
+        // fold HGX and HGY in and apply the >>A 8, so adding them a second
+        // time here would both double the origin and mix the fixed point value
+        // into a pixel coordinate. A stream with HGX = HGY = 0 hides the
+        // mistake, which is why only a shifted grid exposes it.
+        Bitmaps.blit(patternBitmap, _halftoneRegionBitmap!, x, y,
+            _hCombinationOperator);
       }
     }
   }
@@ -174,7 +160,33 @@ class HalftoneRegion implements Region {
     return patterns;
   }
 
-  List<List<int>> _grayScaleDecoding(final int bitsPerValue) {
+  /// 6.6.5.1: HSKIP marks the halftone grid cells whose pattern would fall
+  /// entirely outside the region. Those cells are not coded at all, so the
+  /// generic decoding procedure must skip them rather than read a decision for
+  /// them; getting this wrong desynchronises the arithmetic decoder for the
+  /// whole rest of the grey-scale image.
+  Bitmap _computeSkipBitmap() {
+    final int patternWidth = _patterns!.first.width;
+    final int patternHeight = _patterns!.first.height;
+    final Bitmap skip = Bitmap(_hGridWidth, _hGridHeight);
+
+    for (int mg = 0; mg < _hGridHeight; mg++) {
+      for (int ng = 0; ng < _hGridWidth; ng++) {
+        final int x = _computeX(mg, ng);
+        final int y = _computeY(mg, ng);
+        if (x + patternWidth <= 0 ||
+            x >= _regionInfo.bitmapWidth ||
+            y + patternHeight <= 0 ||
+            y >= _regionInfo.bitmapHeight) {
+          skip.setPixel(ng, mg, 1);
+        }
+      }
+    }
+    return skip;
+  }
+
+  List<List<int>> _grayScaleDecoding(
+      final int bitsPerValue, final Bitmap? skip) {
     List<int>? gbAtX;
     List<int>? gbAtY;
 
@@ -206,7 +218,7 @@ class HalftoneRegion implements Region {
         _hGridWidth,
         _hTemplate,
         false,
-        _hSkipEnabled,
+        skip,
         // Nulos quando a região é MMR, exatamente como na implementação de
         // referência: a decodificação MMR não consulta pixels adaptativos.
         gbAtX,
@@ -270,74 +282,10 @@ class HalftoneRegion implements Region {
     return _shiftAndFill((_hGridY + m * _hRegionX - n * _hRegionY));
   }
 
+  /// The `>>A 8` of 6.6.5.1 and 6.6.5.2: an arithmetic shift that keeps the
+  /// sign, which is what Dart's `>>` already does on an `int`.
   int _shiftAndFill(int value) {
-    value >>= 8;
-    if (value < 0) {
-      // In Java: Integer.highestOneBit(value)
-      // Dart doesn't have highestOneBit directly on int?
-      // I can implement it.
-      // But wait, value is negative, so highest bit is 1 (sign bit).
-      // Java's highestOneBit returns the highest one bit in the two's complement representation.
-      // If value is negative, it's a large positive number in unsigned sense?
-      // No, Java int is signed.
-      // If value is -1 (0xFFFFFFFF), highestOneBit is 0x80000000 (min value).
-      // Math.log(0x80000000) is 31.
-      // 31 - 31 = 0. Loop doesn't run.
-
-      // Let's look at Java code again.
-      /*
-      final int bitPosition = (int) (Math.log(Integer.highestOneBit(value)) / Math.log(2));
-      for (int i = 1; i < 31 - bitPosition; i++) {
-        value |= 1 << (31 - i);
-      }
-      */
-      // This logic seems to be doing sign extension or filling 1s?
-      // If value was shifted right by 8, and it was negative, the top 8 bits are 1s (arithmetic shift).
-      // But if it was logical shift (>>>), top bits are 0.
-      // Java code uses >>= which is arithmetic shift. So top bits are already 1s if it was negative.
-      // So why this loop?
-
-      // Maybe hGridX etc are treated as fixed point?
-      // "7.4.5.1.2.3 Horizontal offset of the grid ... 4 bytes ... signed integer"
-      // "7.4.5.1.3.1 Horizontal coordinate of the halftone grid vector ... 2 bytes ... signed integer"
-
-      // The formula for x is: x = (HGX + m * HRY + n * HRX) >> 8
-      // This looks like fixed point arithmetic with 8 fractional bits.
-
-      // If I use Dart's >> operator, it preserves sign.
-      // So `value >>= 8` should be correct for arithmetic shift.
-
-      // The Java code `shiftAndFill` seems to be trying to replicate arithmetic shift behavior if the input was somehow not sign extended correctly or if they want to fill more bits?
-      // Or maybe `value` passed to `shiftAndFill` is the result of the calculation.
-
-      // Let's assume Dart's `>>` is sufficient for arithmetic shift.
-      // But I should check if `value` passed to `shiftAndFill` can be negative.
-      // Yes.
-
-      // If I just return `value`, it should be fine?
-      // Let's check what the Java code actually does.
-      // `Integer.highestOneBit(value)` for a negative number returns `Integer.MIN_VALUE` (0x80000000).
-      // `Math.log(2^31) / Math.log(2)` is 31.
-      // `31 - 31` is 0. Loop `i < 0` is false.
-      // So for negative numbers, the loop does nothing?
-      // Wait, `Integer.highestOneBit(-1)` is `0x80000000`.
-      // `Integer.highestOneBit(-100)` is `0x80000000`.
-      // So for any negative number, `bitPosition` is 31.
-      // So the loop never runs.
-
-      // What if `value` is positive but was supposed to be negative?
-      // No, `value < 0` check prevents that.
-
-      // Maybe `value` is not fully sign extended?
-      // If `value` comes from `hGridX` (32-bit signed) + ...
-      // It is a 32-bit signed integer.
-
-      // I suspect the Java code might be redundant or I am missing something about `highestOneBit`.
-      // `highestOneBit(i)`: "Returns an int value with at most a single one-bit, in the position of the highest-order ("leftmost") one-bit in the specified int value."
-
-      // If I just use `>> 8`, it should be fine.
-    }
-    return value;
+    return value >> 8;
   }
 
   @override

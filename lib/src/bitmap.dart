@@ -54,6 +54,22 @@ class Bitmap {
     bitmap[byteIndex] = result;
   }
 
+  /// Sets a pixel to [pixelValue], clearing it when the value is 0.
+  ///
+  /// [setPixel] can only ever turn a pixel black, which is all a decoding
+  /// procedure needs. Composing regions with an operator whose identity
+  /// element is 1, such as AND, has to be able to turn a pixel white again.
+  void writePixel(int x, int y, int pixelValue) {
+    final byteIndex = getByteIndex(x, y);
+    final shift = 7 - getBitOffset(x);
+    final mask = 1 << shift;
+    if (pixelValue != 0) {
+      bitmap[byteIndex] |= mask;
+    } else {
+      bitmap[byteIndex] &= (~mask) & 0xff;
+    }
+  }
+
   /// Returns the index of the byte that contains the pixel, specified by the pixel's x and y
   /// coordinates.
   ///

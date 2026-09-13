@@ -189,9 +189,31 @@ class GenericRefinementRegion implements Region {
   }
 
   Bitmap _getGrReference() {
-    final List<SegmentHeader> segments = _segmentHeader!.rtSegments;
-    final Region region = segments[0].getSegmentData() as Region;
-    return region.getRegionBitmap();
+    final List<SegmentHeader> segments = _segmentHeader?.rtSegments ?? const [];
+    for (final SegmentHeader referred in segments) {
+      // 8.2 5) d): the reference is the auxiliary buffer an intermediate
+      // region segment left behind.
+      switch (referred.segmentType) {
+        case 4: // Intermediate text region
+        case 20: // Intermediate halftone region
+        case 36: // Intermediate generic region
+        case 40: // Intermediate generic refinement region
+          return (referred.getSegmentData() as Region).getRegionBitmap();
+      }
+    }
+    throw FormatException(
+        "8.2 5) d): the refinement region segment refers to no intermediate "
+        "region, so it has no auxiliary buffer to refine");
+  }
+
+  /// 8.2 5) c): makes the part of the page buffer this region covers the
+  /// reference bitmap, which is what an immediate refinement region segment
+  /// that refers to no intermediate region refines.
+  void setPageAsReference(Bitmap pageArea) {
+    _referenceBitmap = pageArea;
+    _referenceDX = 0;
+    _referenceDY = 0;
+    _regionBitmap = null;
   }
 
   void _decodeOptimized(

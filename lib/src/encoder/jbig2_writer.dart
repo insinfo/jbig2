@@ -5,10 +5,15 @@ import 'dart:typed_data';
 abstract final class Jbig2SegmentType {
   static const int symbolDictionary = 0;
   static const int immediateLosslessTextRegion = 7;
+  static const int intermediateGenericRegion = 36;
   static const int immediateGenericRegion = 38;
   static const int immediateLosslessGenericRegion = 39;
+  static const int intermediateGenericRefinementRegion = 40;
+  static const int immediateGenericRefinementRegion = 42;
+  static const int immediateLosslessGenericRefinementRegion = 43;
   static const int pageInformation = 48;
   static const int endOfPage = 49;
+  static const int endOfStripe = 50;
   static const int endOfFile = 51;
 }
 
@@ -20,6 +25,9 @@ abstract final class Jbig2SegmentType {
 /// dictionary supplies the dimensions.
 class Jbig2Writer {
   final BytesBuilder _bytes = BytesBuilder();
+
+  /// The length 7.2.7 reserves for "not known when the header was written".
+  static const int unknownDataLength = 0xFFFFFFFF;
 
   /// The file header of a standalone JBIG2 file.
   static const List<int> fileHeaderId = [
@@ -42,12 +50,20 @@ class Jbig2Writer {
   }
 
   /// Writes one segment with its header (7.2) followed by [data].
+  ///
+  /// [declaredLength] overrides the length written into the header. The only
+  /// value 7.2.7 allows there other than the real length is
+  /// [unknownDataLength], which an immediate generic region segment may use
+  /// when a streaming writer does not yet know how long the region will be;
+  /// the data itself then has to end with the terminating sequence and row
+  /// count 7.4.6.4 describes.
   void writeSegment({
     required int number,
     required int type,
     required int page,
     required Uint8List data,
     List<int> referredTo = const [],
+    int? declaredLength,
   }) {
     final header = BytesBuilder();
     _writeUint32(header, number);
@@ -88,11 +104,15 @@ class Jbig2Writer {
     }
 
     // 7.2.7 data length.
-    _writeUint32(header, data.length);
+    _writeUint32(header, declaredLength ?? data.length);
 
     _bytes.add(header.takeBytes());
     _bytes.add(data);
   }
+
+  /// The height 7.4.8.2 reserves for a page whose height the encoder does not
+  /// know yet; the end of stripe segments then give it.
+  static const int unknownPageHeight = 0xFFFFFFFF;
 
   /// Builds the 19 byte page information segment body (7.4.8).
   static Uint8List pageInformation({
@@ -102,6 +122,10 @@ class Jbig2Writer {
     int yResolution = 0,
     bool lossless = true,
     bool defaultPixelBlack = false,
+    int defaultCombinationOperator = 0,
+    bool combinationOperatorOverridden = false,
+    bool striped = false,
+    int maxStripeSize = 0,
   }) {
     final body = BytesBuilder();
     _writeUint32(body, width);
@@ -110,16 +134,69 @@ class Jbig2Writer {
     _writeUint32(body, yResolution);
 
     // 7.4.8.5 flags: bit 0 lossless, bit 2 default pixel value, bits 3-4
-    // default combination operator (0 = OR), bit 6 operator may be overridden.
+    // default combination operator, bit 6 operator may be overridden.
     var flags = 0;
     if (lossless) flags |= 0x01;
     if (defaultPixelBlack) flags |= 0x04;
+    flags |= (defaultCombinationOperator & 0x03) << 3;
+    if (combinationOperatorOverridden) flags |= 0x40;
     body.addByte(flags);
 
-    // 7.4.8.6 striping information: the high bit marks a striped page, which
-    // this writer never produces.
+    // 7.4.8.6 striping information: bit 15 marks a striped page, bits 0-14
+    // hold the maximum stripe size.
+    if (maxStripeSize < 0 || maxStripeSize > 0x7fff) {
+      throw ArgumentError('7.4.8.6 keeps the maximum stripe size in 15 bits.');
+    }
+    final striping = (striped ? 0x8000 : 0) | maxStripeSize;
+    body.addByte((striping >> 8) & 0xff);
+    body.addByte(striping & 0xff);
+    return body.takeBytes();
+  }
+
+  /// Builds the four byte end of stripe segment body (7.4.9): the Y coordinate
+  /// of the stripe's last row.
+  static Uint8List endOfStripe(int lastRow) {
+    final body = BytesBuilder();
+    _writeUint32(body, lastRow);
+    return body.takeBytes();
+  }
+
+  /// Builds a generic refinement region segment body (7.4.7) around
+  /// [codeword].
+  static Uint8List refinementRegion({
+    required int width,
+    required int height,
+    required Uint8List codeword,
+    int x = 0,
+    int y = 0,
+    int template = 1,
+    bool typicalPrediction = false,
+    List<int> atX = const [-1, -1],
+    List<int> atY = const [-1, -1],
+  }) {
+    final body = BytesBuilder();
+
+    // 7.4.1 region segment information field.
+    _writeUint32(body, width);
+    _writeUint32(body, height);
+    _writeUint32(body, x);
+    _writeUint32(body, y);
     body.addByte(0);
-    body.addByte(0);
+
+    // 7.4.7.2 flags: bit 0 GRTEMPLATE, bit 1 TPGRON, the rest reserved.
+    var flags = template & 0x01;
+    if (typicalPrediction) flags |= 0x02;
+    body.addByte(flags);
+
+    // 7.4.7.3 adaptive pixels, present only for template 0.
+    if (template == 0) {
+      for (var i = 0; i < 2; i++) {
+        body.addByte(atX[i] & 0xff);
+        body.addByte(atY[i] & 0xff);
+      }
+    }
+
+    body.add(codeword);
     return body.takeBytes();
   }
 
