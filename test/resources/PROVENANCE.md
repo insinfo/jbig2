@@ -1,48 +1,52 @@
-# Procedência das fixtures
+# Fixture provenance
 
-Nenhum arquivo desta pasta é de autoria própria, e nenhum deles viaja no
-pacote publicado: `.pubignore` exclui `test/` inteiro. O inventário existe
-para que a origem e os termos de cada arquivo fiquem registrados, e não na
-memória de quem os baixou.
+No file in this folder is our own work, and none of them travels in the
+published package: `.pubignore` excludes all of `test/`. The inventory exists so
+that the origin and the terms of each file stay on record, rather than in the
+memory of whoever downloaded them.
 
-## Origem comum
+## Common origin
 
-Todos vieram de `src/test/resources` do projeto **levigo/jbig2-imageio**, hoje
-**Apache PDFBox JBIG2 ImageIO**, que é o mesmo projeto de onde o decodificador
-foi portado:
+They all came from `src/test/resources` in the **levigo/jbig2-imageio** project,
+today **Apache PDFBox JBIG2 ImageIO**, which is the same project the decoder was
+ported from:
 
 - <https://github.com/levigo/jbig2-imageio>
 - <https://github.com/apache/pdfbox-jbig2>
 
-O projeto é licenciado sob a **Apache License 2.0**. A estrutura de diretórios
-foi preservada — inclusive `com/levigo/jbig2/github/` — justamente para que a
-correspondência com o original continue verificável.
+That project is licensed under the **Apache License 2.0**. The directory layout
+was preserved — including `com/levigo/jbig2/github/` — precisely so that the
+correspondence with the original stays checkable.
 
-## Inventário
+## Inventory
 
-| Arquivo | Origem | Licença | Vai no pacote |
+| File | Origin | Licence | In the package |
 |---|---|---|---|
-| `images/001.jb2` … `007.jb2` | levigo/jbig2-imageio | Apache 2.0 | não |
-| `images/042.bmp`, `042_1.jb2` … `042_25.jb2` | levigo/jbig2-imageio; fluxos de conformidade JBIG2 do SPMG da UBC | Apache 2.0 conforme redistribuídos pelo projeto de origem | não |
-| `images/amb.bmp`, `amb_1.jb2`, `amb_2.jb2` | idem | idem | não |
-| `images/20123110001.jb2` … `20123110010.jb2` | levigo/jbig2-imageio | Apache 2.0 | não |
-| `images/sampledata.jb2`, `sampledata_page1.jb2`, `sampledata_page2.jb2`, `sampledata_page3.jb2` | extratos da Recomendação **ITU-T T.88 (2000/02)**, Anexo H.1, redistribuídos pelo projeto de origem | **ITU: uso não comercial apenas.** Ver `images/README_SAMPLE_DATA_LICENSING.txt` | **não** |
-| `images/arith/decoded testsequence`, `images/arith/encoded testsequence` | sequência de teste do codificador aritmético do **Anexo H.2 da ITU-T T.88** | mesmos termos ITU acima | **não** |
-| `images/README_SAMPLE_DATA_LICENSING.txt` | aviso da ITU redistribuído pelo projeto Apache PDFBox | texto de terceiro, não editar | não |
-| `com/levigo/jbig2/github/21.jb2`, `21.glob` | levigo/jbig2-imageio, caso do issue 21 | Apache 2.0 | não |
-| `t88/annex_h.jb2` | **cópia byte a byte de `images/sampledata.jb2`** | mesmos termos ITU | **não** |
+| `images/001.jb2` … `007.jb2` | levigo/jbig2-imageio | Apache 2.0 | no |
+| `images/042.bmp`, `042_1.jb2` … `042_25.jb2` | levigo/jbig2-imageio; JBIG2 conformance streams from UBC's SPMG | Apache 2.0 as redistributed by the origin project | no |
+| `images/amb.bmp`, `amb_1.jb2`, `amb_2.jb2` | idem | idem | no |
+| `images/20123110001.jb2` … `20123110010.jb2` | levigo/jbig2-imageio | Apache 2.0 | no |
+| `images/sampledata.jb2`, `sampledata_page1.jb2`, `sampledata_page2.jb2`, `sampledata_page3.jb2` | extracts from ITU-T Recommendation **T.88 (2000/02)**, Annex H.1, redistributed by the origin project | **ITU: non-commercial use only.** See `images/README_SAMPLE_DATA_LICENSING.txt` | **no** |
+| `images/arith/decoded testsequence`, `images/arith/encoded testsequence` | arithmetic-coder test sequence from **ITU-T T.88 Annex H.2** | same ITU terms as above | **no** |
+| `images/README_SAMPLE_DATA_LICENSING.txt` | the ITU notice as redistributed by the Apache PDFBox project | third-party text, do not edit | no |
+| `com/levigo/jbig2/github/21.jb2`, `21.glob` | levigo/jbig2-imageio, the issue 21 case | Apache 2.0 | no |
+| `t88/annex_h.jb2` | **byte-for-byte copy of `images/sampledata.jb2`** | same ITU terms | **no** |
 
-## Pendências
+## Open items
 
-1. `t88/annex_h.jb2` é duplicata exata de `images/sampledata.jb2` — mesmo MD5,
-   mesmos 860 bytes. Apontar `test/conformance/t88_annex_h_test.dart` para o
-   arquivo já existente e apagar a cópia elimina uma segunda instância de
-   material da ITU no repositório sem perder teste nenhum.
-2. O aviso da ITU em `images/README_SAMPLE_DATA_LICENSING.txt` cita
-   nominalmente apenas `sampledata_pageN.jb2` e `sampledata.jb`. As sequências
-   de teste em `images/arith/` são do mesmo Anexo H e estão sob os mesmos
-   termos; o texto do aviso é de terceiro e não foi editado, por isso a
-   observação fica aqui.
-3. A restrição de uso não comercial da ITU vale para o **repositório**, não
-   para o pacote: nada disso é publicado. Quem fizer um fork com uso comercial
-   precisa saber que estes arquivos estão aqui.
+1. `t88/annex_h.jb2` is an exact duplicate of `images/sampledata.jb2` — same
+   MD5, same 860 bytes. Pointing `test/conformance/t88_annex_h_test.dart` at
+   the existing file and deleting the copy removes a second instance of ITU
+   material from the repository without losing any test.
+2. The ITU notice in `images/README_SAMPLE_DATA_LICENSING.txt` names only
+   `sampledata_pageN.jb2` and `sampledata.jb`. The test sequences in
+   `images/arith/` are from the same Annex H and carry the same terms; the
+   notice is third-party text and was not edited, which is why the observation
+   sits here instead.
+3. The ITU's non-commercial restriction applies to the **repository**, not to
+   the package: none of this is published. Anyone forking for commercial use
+   needs to know these files are here.
+
+Material kept on a development machine for study — reference source trees and
+the like — is deliberately not listed here. This inventory covers what the
+repository versions, because that is what reaches anyone else.
