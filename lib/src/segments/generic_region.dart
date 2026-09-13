@@ -725,7 +725,11 @@ class GenericRegion implements Region {
       }
     }
     if (_gbAtOverride![11]) {
-      context &= 0xfdff;
+      // A12 sits at bit 10 of the context, so bit 10 is the one to clear.
+      // The Java original cleared bit 9 here, which belongs to A3, and a
+      // stream whose A12 was moved off its nominal (-3, -1) decoded to
+      // garbage from the first pixel on.
+      context &= 0xfbff;
       if (_gbAtY![11] == 0 && _gbAtX![11] >= -minorX) {
         context |= (result >> (toShift - _gbAtX![11]) & 0x1) << 10;
       } else {
