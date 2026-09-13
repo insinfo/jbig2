@@ -1,5 +1,8 @@
 # jbig2
 
+[![CI](https://github.com/insinfo/jbig2/actions/workflows/ci.yml/badge.svg)](https://github.com/insinfo/jbig2/actions/workflows/ci.yml)
+[![AI Assisted](https://img.shields.io/badge/AI-Assisted-purple.svg)](https://github.com/insinfo/jbig2#built-with-llm-assistance)
+
 Pure Dart JBIG2 codec, published as `package:jbig2`. It **decodes** standalone
 `.jb2` files and the embedded segment streams PDF's `/JBIG2Decode` filter
 carries, and **encodes** bi-level bitmaps back to either form. The public API
@@ -138,10 +141,71 @@ bitmap symbols still deduplicate normally. Standalone multi-page files and PDF
 `/JBIG2Globals` streams cluster non-identical symbols across pages and compare
 the complete refined and direct representations before keeping the smaller one.
 
+### The other two ways clause 6.2 can code a generic region
+
+Both are off by default. The arithmetic coder with template 0 beats them on
+every scanned page we have measured; these exist because the standard has them
+and because each wins on material the default does not suit.
+
+```dart
+// MMR: the two-dimensional coding of ITU-T T.6, the same one CCITT Group 4
+// uses. No adaptive state at all, and no arithmetic coder in the decoder's
+// path.
+final mmr = encodeJbig2File(image,
+  options: const Jbig2EncodeOptions(
+    mode: Jbig2EncodeMode.genericRegion,
+    genericRegionMmr: true,
+  ),
+);
+
+// EXTTEMPLATE: template 0 with twelve adaptive pixels instead of four. With
+// the nominal positions it produces the very same codeword for twenty-four
+// more header bytes; it pays only when the adaptive pixels are moved onto a
+// periodic pattern, such as a halftone screen.
+final extended = encodeJbig2File(image,
+  options: const Jbig2EncodeOptions(
+    mode: Jbig2EncodeMode.genericRegion,
+    genericRegionExtTemplate: true,
+  ),
+);
+```
+
+Not every JBIG2 decoder in the wild implements EXTTEMPLATE. MMR, by contrast,
+every conforming decoder must accept.
+
+## What is not implemented
+
+Read this before depending on the package. The decoder covers ITU-T T.88 as a
+whole; most of the gaps are on the encoding side.
+
+- **The encoder never emits Huffman coding.** Symbol dictionaries and text
+  regions are always arithmetic (`SDHUFF = 0`, `SBHUFF = 0`). The decoder reads
+  both, including the standard tables of Annex B and custom table segments, so
+  a Huffman file from another encoder decodes fine — this package just does not
+  produce one.
+- **Custom Huffman tables are never written.** Segment type 53 is decoded and
+  never emitted.
+- **Striped pages are read, not written.** The decoder handles striped pages
+  and end-of-stripe segments, including the unknown data length of 7.2.7. The
+  encoder writes one stripe per page.
+- **Halftone regions are decoded, and encoded only through the internal
+  API.** `HalftoneRegionEncoder` and the pattern dictionary encoder exist and
+  are tested, but no public entry point chooses them: `encodeJbig2*` picks
+  between a generic region and a symbol dictionary. Encoding a halftone region
+  today means reaching into `package:jbig2/src/`, which is not a stable API.
+- **No colour or greyscale.** JBIG2 is a bi-level format and this package
+  treats it as one.
+- **No incremental or streaming decode.** A page is decoded whole, in memory.
+  `probeJbig2` is the way to refuse an oversized image before allocating it.
+- **No parallelism.** Decoding is synchronous and single-threaded.
+- **The file-backed `RandomAccessRead` implementations in `lib/src/io` use
+  `dart:io`** and are therefore not reachable from the public facade. On the
+  Web and on Wasm you pass bytes, which is what the public API takes anyway.
+
 ## Development
 
 ```bash
-dart format --output=none --set-exit-if-changed lib test
+dart format --output=none --set-exit-if-changed lib test example
 dart analyze
 dart test
 ```
@@ -155,6 +219,18 @@ outside the facade's graph on purpose.
 
 Fixtures live in `test/resources` and are not published with the package.
 
+## Built with LLM assistance
+
+Parts of the code, of the tests and of this documentation were written with the
+help of large language models. Everything in the repository passes
+`dart analyze` with no errors and no warnings, and the full test suite on every
+supported SDK, on Linux, Windows and macOS, before it is merged; the
+correctness claims above rest on those tests and on the reference vectors named
+with them, not on the provenance of the text.
+
+Say so plainly because it is something anyone depending on the package has a
+right to know.
+
 ## Origin and licences
 
 The decoder — segment parsing, arithmetic and Huffman decoding, MMR, the bitmap
@@ -163,8 +239,21 @@ ImageIO**, formerly levigo JBIG2-ImageIO:
 
 <https://github.com/apache/pdfbox-jbig2>
 
-The MQ and arithmetic integer encoders, generic region and symbol dictionary
-encoders, segment writer and public API are new work written for this package.
+The MQ and arithmetic integer encoders, the generic region encoder (arithmetic,
+extended template and MMR), the symbol dictionary, refinement and halftone
+encoders, the segment writer and the public API are new work written for this
+package.
+
+The code tables of the Huffman and MMR decoders are transcriptions of tables
+published in ITU-T T.88 Annex B and in ITU-T T.4 and T.6; they arrived here
+through the Apache port and travel in the package.
 
 The whole package is released under the **Apache License 2.0**, the licence of
 the code it derives from. See [LICENSE](LICENSE) and [NOTICE](NOTICE).
+
+The test fixtures under `test/resources` come from the same upstream project
+and are not published with the package. Some of them — `sampledata*.jb2`, the
+arithmetic coder test sequences and `t88/annex_h.jb2` — are extracts of
+ITU-T T.88 that the ITU makes available for non-commercial use only; the terms
+are in `test/resources/images/README_SAMPLE_DATA_LICENSING.txt` and the whole
+inventory is in `test/resources/PROVENANCE.md`.

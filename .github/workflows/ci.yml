@@ -24,6 +24,14 @@ jobs:
         # `3.6` é o mínimo declarado no pubspec. Testá-lo é o que impede usar
         # uma API mais nova do que a restrição promete suportar.
         sdk: ['3.6', stable]
+        include:
+          # macOS só na stable. O pacote é Dart puro e não toca em nada
+          # específico de sistema operacional; a matriz completa custaria o
+          # triplo sem dizer nada a mais. O que justifica testar em três
+          # sistemas é o caminho de arquivo das fixtures e a quebra de linha,
+          # e isso um alvo por sistema já cobre.
+          - os: macos-latest
+            sdk: stable
 
     steps:
       - uses: actions/checkout@v4
@@ -60,3 +68,17 @@ jobs:
       # que na hora de publicar.
       - name: Validar publicação
         run: dart pub publish --dry-run
+
+      # `dart doc` sai com zero mesmo tendo emitido avisos, e um aviso é uma
+      # referência que não resolve: a documentação publicada fica com um nome
+      # em texto cru onde devia haver um link. Por isso a saída é inspecionada
+      # em vez de só se olhar o código de saída.
+      - name: Documentar
+        shell: bash
+        run: |
+          set -o pipefail
+          dart doc --output build/api 2>&1 | tee dartdoc.log
+          if grep -qE "Found [1-9][0-9]* (warning|error)" dartdoc.log; then
+            echo "::error::dart doc emitiu avisos ou erros"
+            exit 1
+          fi

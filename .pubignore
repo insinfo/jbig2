@@ -1,5 +1,20 @@
+# O pacote publicado leva só o que o consumidor precisa: README, LICENSE,
+# CHANGELOG, NOTICE, pubspec, `lib/` e `example/`. O resto é material de
+# desenvolvimento e fica no repositório.
+#
+# `analysis_options.yaml` é a exceção deliberada: o pana analisa o pacote
+# publicado com as opções que ele carrega, e sem elas o código portado —
+# que mantém os nomes da norma e do original Java — acusaria lints de
+# nomenclatura que não são defeitos.
+
 .dart_tool/
-test/resources/
+.local-chrome/
 downloads/
 referencias/
-.local-chrome/
+
+test/
+tool/
+doc/
+benchmark/
+
+AGENTS.md

@@ -2,6 +2,9 @@
 # Created by `dart pub`
 .dart_tool/
 
+# Saída do `dart doc`.
+doc/api/
+
 pubspec.lock
 
 .local-chrome/
@@ -9,3 +12,6 @@ pubspec.lock
 downloads/
 
 referencias/
+
+# Saída do `dart doc` em CI.
+build/

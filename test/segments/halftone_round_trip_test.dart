@@ -52,8 +52,9 @@ Bitmap _render(List<List<int>> grid, List<Bitmap> patterns, int offsetNg,
               targetY >= height) {
             continue;
           }
-          if (pattern.getPixel(x, y) == 1)
+          if (pattern.getPixel(x, y) == 1) {
             image.writePixel(targetX, targetY, 1);
+          }
         }
       }
     }

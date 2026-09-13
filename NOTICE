@@ -15,3 +15,14 @@ ImageIO, formerly levigo JBIG2-ImageIO:
 
 The encoder in lib/src/encoder and the public API in lib/src/api are new work
 written for this package, and are released under the same licence.
+
+The code tables in lib/src/decoder/huffman/standard_tables.dart and in
+lib/src/decoder/mmr/mmr_constants.dart are transcriptions of the tables
+published in ITU-T T.88 Annex B and in ITU-T T.4 and T.6. They reached this
+package through the Apache port named above and are distributed with it.
+
+No ITU test data is distributed with this package. The conformance fixtures
+extracted from ITU-T T.88, which the ITU makes available for non-commercial
+use only, live in test/resources and are excluded from the published archive;
+their terms are in test/resources/images/README_SAMPLE_DATA_LICENSING.txt and
+the full inventory is in test/resources/PROVENANCE.md.

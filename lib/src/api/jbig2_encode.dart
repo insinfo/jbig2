@@ -99,9 +99,10 @@ class Jbig2EmbeddedPages {
 /// Encodes PDF image streams with one symbol dictionary shared by all pages.
 ///
 /// Put [Jbig2EmbeddedPages.globals] in a `/JBIG2Globals` stream referenced by
-/// every image's `/DecodeParms`, and use the corresponding item from [pages]
-/// as that image's `/JBIG2Decode` data. In `auto` mode the aggregate size,
-/// including the globals stream, is compared with independent generic regions.
+/// every image's `/DecodeParms`, and use the corresponding item from
+/// [Jbig2EmbeddedPages.pages] as that image's `/JBIG2Decode` data. In `auto`
+/// mode the aggregate size, including the globals stream, is compared with
+/// independent generic regions.
 Jbig2EmbeddedPages encodeJbig2EmbeddedPages(
   List<Jbig2Image> images, {
   Jbig2EncodeOptions options = const Jbig2EncodeOptions(),
